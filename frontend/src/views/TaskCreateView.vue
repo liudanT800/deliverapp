@@ -1,0 +1,392 @@
+<template>
+  <div class="page">
+    <header class="card">
+      <div>
+        <h2>发布顺路任务</h2>
+        <p>30 秒填写关键信息，系统将推送给最顺路的同学</p>
+      </div>
+      <router-link to="/">
+        <n-button tertiary>返回大厅</n-button>
+      </router-link>
+    </header>
+
+    <section class="card">
+      <n-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-placement="top"
+        size="large"
+      >
+        <div class="grid">
+          <n-form-item label="任务标题" path="title">
+            <n-input 
+              v-model:value="form.title" 
+              placeholder="例：带英语教材到一教" 
+              @update:value="handleTitleInput"
+            />
+            <div class="input-hint">{{ titleHint }}</div>
+          </n-form-item>
+          <n-form-item label="物品描述" path="description">
+            <n-input
+              type="textarea"
+              v-model:value="form.description"
+              placeholder="物品数量、注意事项..."
+              @update:value="handleDescriptionInput"
+              :autosize="{ minRows: 3, maxRows: 5 }"
+            />
+            <div class="input-hint">{{ descriptionHint }}</div>
+          </n-form-item>
+          <!-- 改进地点选择，增加地图按钮 -->
+          <n-form-item label="取件地点" path="pickupLocationName">
+            <div class="location-input">
+              <n-input 
+                v-model:value="form.pickupLocationName" 
+                placeholder="宿舍 6 栋" 
+                @update:value="handlePickupLocationInput"
+              />
+              <n-button @click="openMapSelector('pickup')">地图选址</n-button>
+            </div>
+            <div class="input-hint">{{ pickupHint }}</div>
+          </n-form-item>
+          <n-form-item label="送达地点" path="dropoffLocationName">
+            <div class="location-input">
+              <n-input 
+                v-model:value="form.dropoffLocationName" 
+                placeholder="图书馆东门" 
+                @update:value="handleDropoffLocationInput"
+              />
+              <n-button @click="openMapSelector('dropoff')">地图选址</n-button>
+            </div>
+            <div class="input-hint">{{ dropoffHint }}</div>
+          </n-form-item>
+          <n-form-item label="酬金（元）" path="rewardAmount">
+            <n-input-number v-model:value="form.rewardAmount" :min="1" :max="99" />
+          </n-form-item>
+          <n-form-item label="预计完成时间" path="expiresAt">
+            <n-date-picker
+              v-model:value="form.expiresAt"
+              type="datetime"
+              placeholder="选择截止时间"
+            />
+          </n-form-item>
+          <n-form-item label="抢单截止时间" path="grabExpiresAt">
+            <n-date-picker
+              v-model:value="form.grabExpiresAt"
+              type="datetime"
+              placeholder="选择抢单截止时间"
+            />
+          </n-form-item>
+        </div>
+        
+        <!-- 新增任务分类 -->
+        <n-form-item label="任务分类" path="category">
+          <n-select
+            v-model:value="form.category"
+            :options="categoryOptions"
+            placeholder="选择任务类型"
+          />
+        </n-form-item>
+        
+        <!-- 新增紧急程度 -->
+        <n-form-item label="紧急程度" path="urgency">
+          <n-radio-group v-model:value="form.urgency" name="urgency">
+            <n-space>
+              <n-radio value="low">一般</n-radio>
+              <n-radio value="medium">较急</n-radio>
+              <n-radio value="high">紧急</n-radio>
+            </n-space>
+          </n-radio-group>
+        </n-form-item>
+        
+        <n-button 
+          type="primary" 
+          :loading="submitting" 
+          @click="submit"
+          :disabled="isFormInvalid || submitting"
+        >
+          {{ submitting ? '发布中...' : '发布任务' }}
+        </n-button>
+      </n-form>
+    </section>
+    
+    <!-- 地图选址模态框 -->
+    <n-modal
+      v-model:show="showMapModal"
+      preset="card"
+      style="width: 900px; height: 700px;"
+      :title="`选择${mapType === 'pickup' ? '取件' : '送达'}地点`"
+    >
+      <MapSelector
+        :api-key="amapApiKey"
+        :default-location="getDefaultLocation()"
+        @confirm="handleLocationConfirm"
+        @cancel="showMapModal = false"
+      />
+    </n-modal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { reactive, ref, computed } from 'vue'
+import type { FormRules, FormInst } from 'naive-ui'
+import { useTaskStore } from '../stores/tasks'
+import { useRouter } from 'vue-router'
+import { NSelect, NRadioGroup, NRadio, NModal } from 'naive-ui'
+import { useMessage } from 'naive-ui'
+import MapSelector from '../components/MapSelector.vue'
+import type { LocationData } from '../utils/map'
+
+const tasks = useTaskStore()
+const router = useRouter()
+const message = useMessage()
+const formRef = ref<FormInst | null>(null)
+const submitting = ref(false)
+
+// 地图相关状态
+const showMapModal = ref(false)
+const mapType = ref<'pickup' | 'dropoff'>('pickup')
+const amapApiKey = import.meta.env.VITE_AMAP_API_KEY || 'your-amap-api-key'
+
+// 输入提示状态
+const titleHint = ref('请简洁描述任务内容')
+const descriptionHint = ref('详细描述物品信息和注意事项')
+const pickupHint = ref('请输入取件地点')
+const dropoffHint = ref('请输入送达地点')
+
+const form = reactive<{
+  title: string
+  description: string
+  pickupLocationName: string
+  pickupLat?: number
+  pickupLng?: number
+  dropoffLocationName: string
+  dropoffLat?: number
+  dropoffLng?: number
+  rewardAmount: number
+  expiresAt: number
+  grabExpiresAt: number
+  category: string
+  urgency: string
+}>({
+  title: '',
+  description: '',
+  pickupLocationName: '',
+  dropoffLocationName: '',
+  rewardAmount: 5,
+  expiresAt: Date.now() + 60 * 60 * 1000,
+  grabExpiresAt: Date.now() + 60 * 60 * 1000, // 默认1小时后截止抢单
+  category: '',
+  urgency: 'medium'
+})
+
+// 实时验证表单
+const isFormInvalid = computed(() => {
+  return !form.title || !form.description || !form.pickupLocationName || 
+         !form.dropoffLocationName || !form.category || form.rewardAmount < 1
+})
+
+// 处理标题输入
+function handleTitleInput(value: string) {
+  form.title = value
+  if (value.length > 20) {
+    titleHint.value = '标题过长，建议控制在20字以内'
+  } else if (value.length === 0) {
+    titleHint.value = '请简洁描述任务内容'
+  } else {
+    titleHint.value = `已输入${value.length}个字符`
+  }
+}
+
+// 处理描述输入
+function handleDescriptionInput(value: string) {
+  form.description = value
+  if (value.length > 100) {
+    descriptionHint.value = '描述过长，建议控制在100字以内'
+  } else if (value.length === 0) {
+    descriptionHint.value = '详细描述物品信息和注意事项'
+  } else {
+    descriptionHint.value = `已输入${value.length}个字符`
+  }
+}
+
+// 处理取件地点输入
+function handlePickupLocationInput(value: string) {
+  form.pickupLocationName = value
+  pickupHint.value = value ? `取件地点：${value}` : '请输入取件地点'
+}
+
+// 处理送达地点输入
+function handleDropoffLocationInput(value: string) {
+  form.dropoffLocationName = value
+  dropoffHint.value = value ? `送达地点：${value}` : '请输入送达地点'
+}
+
+const rules: FormRules = {
+  title: [{ required: true, message: '请输入标题' }],
+  description: [{ required: true, message: '请输入描述' }],
+  pickupLocationName: [{ required: true, message: '请选择取件地点' }],
+  dropoffLocationName: [{ required: true, message: '请选择送达地点' }],
+  rewardAmount: [
+    { required: true, message: '请输入酬金' },
+    { type: 'number', min: 1, message: '至少 1 元' },
+  ],
+  expiresAt: [{ required: true, message: '请选择截止时间' }],
+  category: [{ required: true, message: '请选择任务分类' }]
+}
+
+// 任务分类选项
+const categoryOptions = [
+  { label: '快递代取', value: 'delivery' },
+  { label: '餐饮代买', value: 'food' },
+  { label: '文件传递', value: 'document' },
+  { label: '物品代购', value: 'purchase' },
+  { label: '其他', value: 'other' }
+]
+
+function openMapSelector(type: 'pickup' | 'dropoff') {
+  mapType.value = type
+  showMapModal.value = true
+}
+
+function getDefaultLocation(): LocationData | undefined {
+  if (mapType.value === 'pickup') {
+    return form.pickupLat && form.pickupLng ? {
+      name: form.pickupLocationName,
+      address: form.pickupLocationName,
+      lat: form.pickupLat,
+      lng: form.pickupLng
+    } : undefined
+  } else {
+    return form.dropoffLat && form.dropoffLng ? {
+      name: form.dropoffLocationName,
+      address: form.dropoffLocationName,
+      lat: form.dropoffLat,
+      lng: form.dropoffLng
+    } : undefined
+  }
+}
+
+function handleLocationConfirm(location: LocationData) {
+  if (mapType.value === 'pickup') {
+    form.pickupLocationName = location.name
+    form.pickupLat = location.lat
+    form.pickupLng = location.lng
+    pickupHint.value = `取件地点：${location.name} (${location.address})`
+  } else {
+    form.dropoffLocationName = location.name
+    form.dropoffLat = location.lat
+    form.dropoffLng = location.lng
+    dropoffHint.value = `送达地点：${location.name} (${location.address})`
+  }
+  showMapModal.value = false
+  message.success('地点选择成功')
+}
+
+function submit() {
+  formRef.value?.validate(async (errors) => {
+    if (!errors) {
+      submitting.value = true
+      try {
+        // 构造正确的payload对象
+        const payload = {
+          title: form.title,
+          description: form.description,
+          pickupLocationName: form.pickupLocationName,
+          pickupLat: form.pickupLat,
+          pickupLng: form.pickupLng,
+          dropoffLocationName: form.dropoffLocationName,
+          dropoffLat: form.dropoffLat,
+          dropoffLng: form.dropoffLng,
+          rewardAmount: form.rewardAmount,
+          expiresAt: new Date(form.expiresAt).toISOString(),
+          grabExpiresAt: new Date(form.grabExpiresAt).toISOString(),
+          category: form.category,
+          urgency: form.urgency
+        }
+        const task = await tasks.createTask(payload)
+        message.success('任务发布成功')
+        router.push(`/tasks/${task.id}`)
+      } catch (error) {
+        console.error('发布任务失败:', error)
+        message.error(error.message || '任务发布失败，请重试')
+      } finally {
+        submitting.value = false
+      }
+    } else {
+      message.warning('请检查表单填写是否正确')
+    }
+  })
+}
+</script>
+
+<style scoped>
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.card {
+  padding: 2rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* 新增样式 */
+.location-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.location-input .n-input {
+  flex: 1;
+}
+
+.map-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.map-placeholder {
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-small);
+}
+
+.map-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.map-controls .n-input {
+  flex: 1;
+}
+
+/* 新增输入提示样式 */
+.input-hint {
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.input-hint.error {
+  color: var(--error-color);
+}
+</style>

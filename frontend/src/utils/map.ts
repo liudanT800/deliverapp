@@ -1,0 +1,236 @@
+/**
+ * 地图服务工具类
+ * 基于高德地图API封装的工具函数
+ */
+
+export interface LocationData {
+  name: string
+  address: string
+  lat: number
+  lng: number
+}
+
+export interface MapConfig {
+  apiKey: string
+  version: string
+  plugins: string[]
+}
+
+// 地图配置
+export const MAP_CONFIG: MapConfig = {
+  apiKey: import.meta.env.VITE_AMAP_API_KEY || 'your-amap-api-key',
+  version: '2.0',
+  plugins: ['AMap.Geocoder', 'AMap.PlaceSearch', 'AMap.Geolocation']
+}
+
+/**
+ * 检查地图API是否可用
+ */
+export function isMapApiAvailable(): boolean {
+  return !!(window as any).AMap
+}
+
+/**
+ * 格式化坐标为高德地图格式
+ */
+export function formatLngLat(lng: number, lat: number): [number, number] {
+  return [lng, lat]
+}
+
+/**
+ * 解析高德地图坐标格式
+ */
+export function parseLngLat(lnglat: [number, number]): { lng: number; lat: number } {
+  return {
+    lng: lnglat[0],
+    lat: lnglat[1]
+  }
+}
+
+/**
+ * 计算两点之间的距离（米）
+ */
+export function calculateDistance(
+  point1: { lng: number; lat: number },
+  point2: { lng: number; lat: number }
+): number {
+  if (!isMapApiAvailable()) {
+    // 简化的距离计算（非精确）
+    const R = 6371000 // 地球半径（米）
+    const dLat = (point2.lat - point1.lat) * Math.PI / 180
+    const dLng = (point2.lng - point1.lng) * Math.PI / 180
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  const AMap = (window as any).AMap
+  const p1 = new AMap.LngLat(point1.lng, point1.lat)
+  const p2 = new AMap.LngLat(point2.lng, point2.lat)
+  return p1.distance(p2)
+}
+
+/**
+ * 地址搜索
+ */
+export async function searchPlaces(
+  keyword: string,
+  options: {
+    city?: string
+    pageSize?: number
+    pageIndex?: number
+  } = {}
+): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    if (!isMapApiAvailable()) {
+      reject(new Error('地图API不可用'))
+      return
+    }
+
+    const AMap = (window as any).AMap
+    const placeSearch = new AMap.PlaceSearch({
+      city: options.city || '全国',
+      pageSize: options.pageSize || 10,
+      pageIndex: options.pageIndex || 1
+    })
+
+    placeSearch.search(keyword, (status: string, result: any) => {
+      if (status === 'complete' && result.info === 'OK') {
+        resolve(result.poiList.pois)
+      } else {
+        reject(new Error('搜索失败'))
+      }
+    })
+  })
+}
+
+/**
+ * 地理编码（地址转坐标）
+ */
+export async function geocode(address: string, city?: string): Promise<LocationData> {
+  return new Promise((resolve, reject) => {
+    if (!isMapApiAvailable()) {
+      reject(new Error('地图API不可用'))
+      return
+    }
+
+    const AMap = (window as any).AMap
+    const geocoder = new AMap.Geocoder({
+      city: city || '全国'
+    })
+
+    geocoder.getLocation(address, (status: string, result: any) => {
+      if (status === 'complete' && result.info === 'OK' && result.geocodes.length > 0) {
+        const geocode = result.geocodes[0]
+        resolve({
+          name: geocode.formattedAddress,
+          address: geocode.formattedAddress,
+          lat: geocode.location.lat,
+          lng: geocode.location.lng
+        })
+      } else {
+        reject(new Error('地理编码失败'))
+      }
+    })
+  })
+}
+
+/**
+ * 逆地理编码（坐标转地址）
+ */
+export async function reverseGeocode(lng: number, lat: number): Promise<LocationData> {
+  return new Promise((resolve, reject) => {
+    if (!isMapApiAvailable()) {
+      reject(new Error('地图API不可用'))
+      return
+    }
+
+    const AMap = (window as any).AMap
+    const geocoder = new AMap.Geocoder()
+
+    geocoder.getAddress([lng, lat], (status: string, result: any) => {
+      if (status === 'complete' && result.info === 'OK') {
+        const addressComponent = result.regeocode.addressComponent
+        const formattedAddress = result.regeocode.formattedAddress
+
+        resolve({
+          name: addressComponent.building || addressComponent.neighborhood || '位置',
+          address: formattedAddress,
+          lat,
+          lng
+        })
+      } else {
+        reject(new Error('逆地理编码失败'))
+      }
+    })
+  })
+}
+
+/**
+ * 获取当前位置
+ */
+export async function getCurrentLocation(): Promise<LocationData> {
+  return new Promise((resolve, reject) => {
+    if (!isMapApiAvailable()) {
+      reject(new Error('地图API不可用'))
+      return
+    }
+
+    const AMap = (window as any).AMap
+    const geolocation = new AMap.Geolocation({
+      enableHighAccuracy: true,
+      timeout: 10000
+    })
+
+    geolocation.getCurrentPosition((status: string, result: any) => {
+      if (status === 'complete') {
+        const lng = result.position.lng
+        const lat = result.position.lat
+
+        // 获取地址信息
+        reverseGeocode(lng, lat)
+          .then(resolve)
+          .catch(() => {
+            // 如果逆地理编码失败，返回基础位置信息
+            resolve({
+              name: '当前位置',
+              address: `${lng.toFixed(6)}, ${lat.toFixed(6)}`,
+              lat,
+              lng
+            })
+          })
+      } else {
+        reject(new Error('获取当前位置失败'))
+      }
+    })
+  })
+}
+
+/**
+ * 验证坐标是否有效
+ */
+export function isValidCoordinate(lng: number, lat: number): boolean {
+  return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90
+}
+
+/**
+ * 格式化距离显示
+ */
+export function formatDistance(meters: number): string {
+  if (meters < 1000) {
+    return `${Math.round(meters)}米`
+  } else {
+    return `${(meters / 1000).toFixed(1)}公里`
+  }
+}
+
+/**
+ * 地图类型定义扩展
+ */
+declare global {
+  interface Window {
+    AMap: any
+  }
+}
