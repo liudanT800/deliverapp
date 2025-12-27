@@ -1,0 +1,195 @@
+:root {
+  --primary-color: #5b7bff;
+  --primary-light: #eef2ff;
+  --primary-dark: #4356e0;
+  --secondary-color: #50b2ff;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --bg-primary: #f5f6fb;
+  --bg-secondary: #fff;
+  --bg-tertiary: #f9fafb;
+  --border-color: #e5e7eb;
+  --shadow-light: 0 10px 30px rgba(80, 102, 245, 0.05);
+  --shadow-medium: 0 20px 45px rgba(80, 102, 245, 0.05);
+  --shadow-heavy: 0 20px 45px rgba(80, 102, 245, 0.1);
+  --radius-small: 12px;
+  --radius-medium: 16px;
+  --radius-large: 20px;
+  
+  font-family:
+    'SF Pro Display',
+    'PingFang SC',
+    'Helvetica Neue',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-primary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* 统一卡片样式 */
+.card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-medium);
+}
+
+/* 统一按钮样式 */
+.n-button {
+  border-radius: var(--radius-small);
+  font-weight: 500;
+}
+
+.n-button--primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.n-button--primary:hover {
+  background-color: #4356e0;
+  border-color: #4356e0;
+}
+
+/* 统一标签样式 */
+.n-tag {
+  border-radius: 999px;
+}
+
+/* 统一表单样式 */
+.n-form-item-label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.n-input,
+.n-input-number,
+.n-select,
+.n-date-picker {
+  border-radius: var(--radius-small);
+  width: 100%;
+}
+
+/* 确保输入框在flex容器中能正确收缩 */
+.n-input,
+.n-input-wrapper {
+  min-width: 0;
+}
+
+/* 输入框自适应大小 */
+.n-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 日期选择器自适应 */
+.n-date-picker {
+  width: 100%;
+}
+
+/* 输入框在不同容器中的响应式行为 */
+.n-form-item .n-input,
+.n-form-item .n-input-number,
+.n-form-item .n-select,
+.n-form-item .n-date-picker {
+  width: 100%;
+}
+
+/* 统一模态框样式 */
+.n-modal {
+  border-radius: var(--radius-large);
+}
+
+/* 统一空状态样式 */
+.n-empty .n-empty__description {
+  color: var(--text-secondary);
+}
+
+/* 新增全局动画和过渡效果 */
+* {
+  transition: background-color 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s;
+}
+
+/* 按钮悬停效果增强 */
+.n-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.n-button:hover:not(.n-button--disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-heavy);
+}
+
+/* 卡片悬停效果 */
+.card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-heavy);
+}
+
+/* 输入框焦点效果 */
+.n-input:focus-within,
+.n-input-number:focus-within,
+.n-select:focus-within {
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+/* 链接悬停效果 */
+a {
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--primary-color);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
