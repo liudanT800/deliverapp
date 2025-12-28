@@ -92,8 +92,10 @@ class CreditScoringService:
             包含各种统计信息的字典
         """
         # 获取用户的所有任务
-        published_tasks = user.tasks_created
-        taken_tasks = user.tasks_taken
+        # 注意：这里假设 user 对象已经预加载了 tasks_created 和 tasks_taken
+        # 如果没有预加载，这里会返回空列表或报错，取决于 SQLAlchemy 配置
+        published_tasks = getattr(user, 'tasks_created', [])
+        taken_tasks = getattr(user, 'tasks_taken', [])
 
         # 计算完成率
         published_completed = sum(1 for t in published_tasks if t.status == TaskStatus.completed)
@@ -165,8 +167,12 @@ class CreditScoringService:
 
         # 活跃任务数量检查
         max_active_tasks = self._get_max_active_tasks(user)
+        
+        # 安全获取 tasks_taken
+        tasks_taken = getattr(user, 'tasks_taken', [])
+        
         active_tasks_count = sum(
-            1 for t in user.tasks_taken
+            1 for t in tasks_taken
             if t.status not in [TaskStatus.completed, TaskStatus.cancelled]
         )
 
@@ -234,8 +240,11 @@ class CreditScoringService:
         """
         检查用户行为模式，防止滥用系统
         """
+        # 安全获取 tasks_taken
+        tasks_taken = getattr(user, 'tasks_taken', [])
+        
         # 检查近期取消率
-        recent_tasks = [t for t in user.tasks_taken
+        recent_tasks = [t for t in tasks_taken
                        if (datetime.utcnow() - t.created_at).days <= 30]
 
         if len(recent_tasks) >= 5:

@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:9800/api',
   timeout: 10_000,
 })
 

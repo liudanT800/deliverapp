@@ -15,9 +15,6 @@
         <n-form-item label="所属校区" path="campus">
           <n-input v-model:value="form.campus" placeholder="下沙校区" />
         </n-form-item>
-        <n-form-item label="头像URL（可选）" path="avatarUrl">
-          <n-input v-model:value="form.avatarUrl" placeholder="头像图片链接" />
-        </n-form-item>
         <n-form-item label="设置密码" path="password">
           <n-input type="password" v-model:value="form.password" show-password-on="click" />
         </n-form-item>
@@ -123,7 +120,6 @@ const form = reactive({
   email: '',
   phone: '',
   campus: '',
-  avatarUrl: '',
   password: '',
   confirmPassword: ''
 })

@@ -28,7 +28,7 @@
 VITE_AMAP_API_KEY=your_actual_api_key_here
 
 # 其他配置
-VITE_API_PROXY=http://localhost:8000
+VITE_API_PROXY=http://localhost:9800
 ```
 
 ### 3. 安装依赖

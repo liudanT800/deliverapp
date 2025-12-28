@@ -38,7 +38,6 @@ export function updateProfile(payload: {
   fullName?: string
   phone?: string
   campus?: string
-  avatarUrl?: string
 }) {
   return http.put('/users/me', payload).then((res) => res.data.data)
 }

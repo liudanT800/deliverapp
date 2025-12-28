@@ -11,7 +11,6 @@ export interface AuthUser {
   verified: boolean
   campus?: string
   phone?: string
-  avatarUrl?: string
 }
 
 interface LoginPayload {

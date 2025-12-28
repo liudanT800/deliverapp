@@ -5,11 +5,11 @@ echo ========================================
 
 echo.
 echo 正在启动后端服务...
-start "后端服务" cmd /k "cd backend && python -m venv .venv 2>nul && .venv\Scripts\activate && set SECRET_KEY=change-me && set DATABASE_URL=sqlite+aiosqlite:///./test.db && set DEVELOPMENT_MODE=true && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 9800"
+start "后端服务" cmd /k "start-backend.bat"
 
 echo.
 echo 等待后端服务启动...
-timeout /t 5 /nobreak >nul
+timeout /t 3 /nobreak >nul
 
 echo.
 echo 正在启动前端服务...

@@ -126,7 +126,7 @@ const fetchUsers = async () => {
         id: 3,
         email: 'admin@campus.edu',
         fullName: '管理员',
-        phone: '13800138000',
+        phone: '13800139800',
         campus: '下沙校区',
         role: 'admin',
         verified: true,

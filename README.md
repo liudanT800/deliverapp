@@ -74,7 +74,7 @@ start-app.bat
 该脚本会自动：
 1. 创建并激活Python虚拟环境
 2. 安装后端依赖
-3. 启动后端服务（端口 8000）
+3. 启动后端服务（端口 9800）
 4. 安装前端依赖
 5. 启动前端服务（端口 4173）
 
@@ -100,7 +100,7 @@ pip install -r requirements.txt
 set SECRET_KEY=change-me
 set DATABASE_URL=sqlite+aiosqlite:///./test.db
 set DEVELOPMENT_MODE=true
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 9800
 ```
 
 **数据库配置**
@@ -181,7 +181,7 @@ completed（已完成）
 
 **前端**
 - `VITE_AMAP_API_KEY` - 高德地图API密钥（必填，用于地图功能）
-- `VITE_API_PROXY` - API代理目标地址（可选，默认 `http://localhost:8000`）
+- `VITE_API_PROXY` - API代理目标地址（可选，默认 `http://localhost:9800`）
 
 ### 地图功能说明
 
