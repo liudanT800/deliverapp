@@ -1,27 +1,27 @@
 @echo off
 echo ========================================
-echo æ­£åœ¨å¯åŠ¨é¡ºè·¯å¸¦æ ¡å›­äº’åŠ©å¹³å°
+echo ÕıÔÚÆô¶¯Ë³Â·´øĞ£Ô°»¥ÖúÆ½Ì¨
 echo ========================================
 
 echo.
-echo æ­£åœ¨å¯åŠ¨åç«¯æœåŠ¡...
-start "åç«¯æœåŠ¡" cmd /k "cd backend && python -m venv .venv 2>nul && .venv\Scripts\activate && set SECRET_KEY=change-me && set DATABASE_URL=sqlite+aiosqlite:///./test.db && set DEVELOPMENT_MODE=true && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
+echo ÕıÔÚÆô¶¯ºó¶Ë·şÎñ...
+start "ºó¶Ë·şÎñ" cmd /k "cd backend && python -m venv .venv 2>nul && .venv\Scripts\activate && set SECRET_KEY=change-me && set DATABASE_URL=sqlite+aiosqlite:///./test.db && set DEVELOPMENT_MODE=true && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 9800"
 
 echo.
-echo ç­‰å¾…åç«¯æœåŠ¡å¯åŠ¨...
+echo µÈ´ıºó¶Ë·şÎñÆô¶¯...
 timeout /t 5 /nobreak >nul
 
 echo.
-echo æ­£åœ¨å¯åŠ¨å‰ç«¯æœåŠ¡...
-start "å‰ç«¯æœåŠ¡" cmd /k "cd frontend && npm install && npm run dev"
+echo ÕıÔÚÆô¶¯Ç°¶Ë·şÎñ...
+start "Ç°¶Ë·şÎñ" cmd /k "cd frontend && npm install && npm run dev"
 
 echo.
 echo ========================================
-echo å¯åŠ¨å®Œæˆï¼
-echo å‰ç«¯åœ°å€: http://localhost:4173
-echo åç«¯åœ°å€: http://localhost:8000
+echo Æô¶¯Íê³É£¡
+echo Ç°¶ËµØÖ·: http://localhost:5173
+echo ºó¶ËµØÖ·: http://localhost:9800
 echo ========================================
 
 echo.
-echo è¯·ç¨ç­‰ç‰‡åˆ»ï¼Œè®©æœåŠ¡å®Œå…¨å¯åŠ¨åå†è®¿é—®å‰ç«¯é¡µé¢ã€‚
+echo ÇëÉÔµÈÆ¬¿Ì£¬ÈÃ·şÎñÍêÈ«Æô¶¯ºóÔÙ·ÃÎÊÇ°¶ËÒ³Ãæ¡£
 pause

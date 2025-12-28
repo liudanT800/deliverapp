@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24
     jwt_algorithm: str = "HS256"
 
-    cors_origins: list[str] = ["http://localhost:4173"]
+    cors_origins: list[str] = ["*"]
 
     @computed_field(return_type=str)
     def frontend_url(self) -> str:

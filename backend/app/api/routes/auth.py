@@ -47,6 +47,8 @@ async def register_user(
             message="用户注册成功",
             data=db_user
         )
+    except HTTPException:
+        raise
     except SQLAlchemyError as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"数据库操作失败: {str(e)}")
