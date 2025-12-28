@@ -318,36 +318,33 @@ function handleMapClick(lnglat: any) {
       // 前端地理编码失败，尝试使用后端地理编码服务
       console.warn('前端地理编码失败，尝试使用后端服务')
               
-      // 添加延迟以避免过于频繁的后端请求
-      setTimeout(() => {
-        // 使用后端API进行逆地理编码
-        import('../utils/map').then(({ reverseGeocodeBackend }) => {
-          reverseGeocodeBackend(lng, lat)
-            .then(backendResult => {
-              setMarker(lng, lat)
-              selectedLocation.value = backendResult
-              selectedResult.value = undefined
-              locationError.value = '' // 清除错误信息
-              console.log('通过后端API成功获取地址信息')
-            })
-            .catch(backendError => {
-              console.warn('后端地理编码也失败，使用默认位置信息', backendError)
-              const location: LocationData = {
-                name: '点击位置',
-                address: `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
-                lat,
-                lng
-              }
-    
-              setMarker(lng, lat)
-              selectedLocation.value = location
-              selectedResult.value = undefined
-    
-              // 显示友好的提示信息
-              locationError.value = '地址解析失败，但您仍可以选择此位置。系统已尝试使用后端服务获取地址信息。'
-            })
-        })
-      }, 100) // 100ms延迟
+      // 使用智能逆地理编码，自动降级处理
+      import('../utils/map').then(({ smartReverseGeocode }) => {
+        smartReverseGeocode(lng, lat)
+          .then(smartResult => {
+            setMarker(lng, lat)
+            selectedLocation.value = smartResult
+            selectedResult.value = undefined
+            locationError.value = '' // 清除错误信息
+            console.log('通过智能逆地理编码成功获取地址信息')
+          })
+          .catch(smartError => {
+            console.warn('智能逆地理编码失败，使用默认位置信息', smartError)
+            const location: LocationData = {
+              name: '点击位置',
+              address: `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
+              lat,
+              lng
+            }
+      
+            setMarker(lng, lat)
+            selectedLocation.value = location
+            selectedResult.value = undefined
+      
+            // 显示友好的提示信息
+            locationError.value = '地址解析失败，但您仍可以选择此位置。系统已尝试使用多种方式获取地址信息。'
+          })
+      })
     }
   })
 }
@@ -550,30 +547,28 @@ function getCurrentLocation() {
           // 前端地理编码失败，尝试使用后端地理编码服务
           console.warn('前端地理编码失败，尝试使用后端服务获取当前位置')
           
-          // 添加延迟以避免过于频繁的后端请求
-          setTimeout(() => {
-            import('../utils/map').then(({ reverseGeocodeBackend }) => {
-              reverseGeocodeBackend(lng, lat)
-                .then(backendResult => {
-                  setMarker(lng, lat)
-                  selectedLocation.value = backendResult
-                  selectedResult.value = undefined
-                  console.log('通过后端API成功获取当前位置信息')
-                })
-                .catch(backendError => {
-                  console.warn('后端地理编码也失败，使用默认位置信息', backendError)
-                  const location: LocationData = {
-                    name: '当前位置',
-                    address: `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
-                    lat,
-                    lng
-                  }
-                  setMarker(lng, lat)
-                  selectedLocation.value = location
-                  selectedResult.value = undefined
-                })
-            })
-          }, 100) // 100ms延迟
+          // 使用智能逆地理编码，自动降级处理
+          import('../utils/map').then(({ smartReverseGeocode }) => {
+            smartReverseGeocode(lng, lat)
+              .then(smartResult => {
+                setMarker(lng, lat)
+                selectedLocation.value = smartResult
+                selectedResult.value = undefined
+                console.log('通过智能逆地理编码成功获取当前位置信息')
+              })
+              .catch(smartError => {
+                console.warn('智能逆地理编码失败，使用默认位置信息', smartError)
+                const location: LocationData = {
+                  name: '当前位置',
+                  address: `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
+                  lat,
+                  lng
+                }
+                setMarker(lng, lat)
+                selectedLocation.value = location
+                selectedResult.value = undefined
+              })
+          })
         }
       })
     } else {

@@ -2,7 +2,7 @@
   <div class="auth-page">
     <section class="card">
       <h2>注册顺路带</h2>
-      <n-form :model="form" :rules="rules" ref="formRef">
+      <n-form :model="form" ref="formRef">
         <n-form-item label="姓名" path="fullName">
           <n-input v-model:value="form.fullName" placeholder="张三" />
         </n-form-item>
@@ -31,7 +31,7 @@
             <a href="#" @click.prevent="showPrivacy">隐私政策</a>
           </n-checkbox>
         </n-form-item>
-        <n-button type="primary" block :loading="auth.loading" @click="handleRegister" :disabled="!agreeTerms">
+        <n-button type="primary" block :loading="auth.loading" @click="handleRegister">
           注册并登录
         </n-button>
       </n-form>
@@ -128,40 +128,7 @@ const form = reactive({
   confirmPassword: ''
 })
 
-const rules: FormRules = {
-  fullName: [
-    { required: true, message: '请输入姓名' },
-    { min: 2, message: '姓名至少2个字符' }
-  ],
-  email: [
-    { required: true, message: '请输入邮箱' },
-    { type: 'email', message: '邮箱格式不正确' },
-  ],
-  phone: [
-    { required: true, message: '请输入手机号' },
-    { pattern: /^1\d{10}$/, message: '请输入合法手机号' },
-  ],
-  campus: [
-    { required: true, message: '请输入校区' },
-    { min: 2, message: '校区名称至少2个字符' }
-  ],
-  password: [
-    { required: true, message: '请输入密码' },
-    { min: 6, message: '密码至少6位' },
-    { max: 72, message: '密码不能超过72个字符' }
-  ],
-  confirmPassword: [
-    {
-      required: true,
-      message: '请确认密码',
-    },
-    {
-      validator: (_, value) => value === form.password,
-      message: '两次密码不一致',
-      trigger: ['input', 'blur'],
-    },
-  ]
-}
+
 
 // 显示用户协议
 function showTerms() {
@@ -178,18 +145,19 @@ async function handleRegister() {
     message.warning('请先阅读并同意用户协议和隐私政策')
     return
   }
-
-  formRef.value?.validate(async (errors) => {
-    if (!errors) {
-      try {
-        const result = await auth.register(form)
-        message.success(result.message || '注册成功')
-        router.push('/')
-      } catch (error: any) {
-        message.error(error.message || '注册失败')
-      }
-    }
-  })
+  
+  if (!form.fullName || !form.email || !form.phone || !form.campus || !form.password || form.password !== form.confirmPassword) {
+    message.warning('请填写完整信息并确保密码一致')
+    return
+  }
+  
+  try {
+    const result = await auth.register(form)
+    message.success(result.message || '注册成功')
+    router.push('/')
+  } catch (error: any) {
+    message.error(error.message || '注册失败')
+  }
 }
 </script>
 

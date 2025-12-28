@@ -3,7 +3,7 @@
 提供地理编码、逆地理编码等服务
 """
 from typing import Annotated
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
@@ -17,6 +17,7 @@ router = APIRouter(prefix="/maps", tags=["maps"])
 
 @router.get("/geocode")
 async def geocode_address(
+    request: Request,
     address: str = Query(..., description="要编码的地址"),
     session: Annotated[AsyncSession, Depends(deps.get_db)] = None,
 ):
@@ -40,21 +41,26 @@ async def geocode_address(
             'level': result.get('level', '地名')
         }
         
+        request_id = getattr(request.state, 'request_id', None)
         return ResponseModel(
             success=True,
             message="地理编码成功",
-            data=formatted_result
+            data=formatted_result,
+            request_id=request_id
         )
     else:
+        request_id = getattr(request.state, 'request_id', None)
         return ResponseModel(
             success=False,
             message="地理编码失败",
-            data=None
+            data=None,
+            request_id=request_id
         )
 
 
 @router.get("/reverse-geocode")
 async def reverse_geocode(
+    request: Request,
     lng: float = Query(..., description="经度"),
     lat: float = Query(..., description="纬度"),
     session: Annotated[AsyncSession, Depends(deps.get_db)] = None,
@@ -64,14 +70,18 @@ async def reverse_geocode(
     """
     result = await amap_service.regeocode(lng, lat)
     if result:
+        request_id = getattr(request.state, 'request_id', None)
         return ResponseModel(
             success=True,
             message="逆地理编码成功",
-            data=result
+            data=result,
+            request_id=request_id
         )
     else:
+        request_id = getattr(request.state, 'request_id', None)
         return ResponseModel(
             success=False,
             message="逆地理编码失败",
-            data=None
+            data=None,
+            request_id=request_id
         )

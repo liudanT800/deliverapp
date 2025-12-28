@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 
 from app.models.user import User
 from app.models.task import Task, TaskStatus
-from app.services.credit_service import credit_service
+
 
 
 def update_credit_score(user: User, delta: float) -> None:
@@ -26,7 +26,7 @@ def update_credit_score(user: User, delta: float) -> None:
 
 def can_accept_task(user: User, task: Task) -> bool:
     """
-    检查用户是否有资格接取任务（使用智能信用评分系统）
+    检查用户是否有资格接取任务
 
     Args:
         user: 用户
@@ -35,5 +35,15 @@ def can_accept_task(user: User, task: Task) -> bool:
     Returns:
         bool: 是否有资格接取
     """
-    result = credit_service.can_accept_task(user, task)
-    return result['can_accept']
+    # 基础检查：不能接自己的任务
+    if task.created_by_id == user.id:
+        return False
+    
+    # 检查用户是否已经有太多进行中的任务
+    active_tasks_count = sum(
+        1 for t in user.tasks_taken
+        if t.status not in [TaskStatus.completed, TaskStatus.cancelled]
+    )
+    
+    # 简单限制，最多同时进行5个任务
+    return active_tasks_count < 5

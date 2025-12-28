@@ -1,7 +1,7 @@
 from datetime import timedelta
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "false").lower() == "true"
 
 @router.post("/register", response_model=ResponseModel[user_schema.UserRead], status_code=201)
 async def register_user(
+    request: Request,
     payload: user_schema.UserCreate,
     session: AsyncSession = Depends(deps.get_db),
 ):
@@ -42,10 +43,12 @@ async def register_user(
         await session.commit()
         await session.refresh(db_user)
         
+        request_id = getattr(request.state, 'request_id', None)
         return ResponseModel(
             success=True,
             message="用户注册成功",
-            data=db_user
+            data=db_user,
+            request_id=request_id
         )
     except SQLAlchemyError as e:
         await session.rollback()
@@ -57,6 +60,7 @@ async def register_user(
 
 @router.post("/login", response_model=ResponseModel[auth_schema.Token])
 async def login(
+    request: Request,
     payload: auth_schema.LoginRequest,
     session: AsyncSession = Depends(deps.get_db),
 ):
@@ -94,10 +98,12 @@ async def login(
             raise HTTPException(status_code=400, detail="账号被停用")
 
         token = create_access_token(user.email, timedelta(minutes=60 * 24))
+        request_id = getattr(request.state, 'request_id', None)
         return ResponseModel(
             success=True,
             message="登录成功",
-            data=auth_schema.Token(access_token=token)
+            data=auth_schema.Token(access_token=token),
+            request_id=request_id
         )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=f"数据库操作失败: {str(e)}")

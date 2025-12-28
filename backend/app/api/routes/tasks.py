@@ -1,7 +1,7 @@
 from typing import Annotated
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,6 +18,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 @router.get("", response_model=ResponseModel[list[TaskRead]])
 async def list_tasks(
+    request: Request,
     keyword: str | None = None,
     status_filter: TaskStatus | None = Query(None, alias="status"),
     min_reward: float | None = None,
@@ -98,15 +99,18 @@ async def list_tasks(
     result = await session.execute(stmt)
     tasks = result.scalars().all()
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务列表获取成功",
-        data=tasks
+        data=tasks,
+        request_id=request_id
     )
 
 
 @router.get("/{task_id}", response_model=ResponseModel[TaskRead])
 async def get_task(
+    request: Request,
     task_id: int,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
 ):
@@ -123,10 +127,12 @@ async def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务详情获取成功",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
@@ -134,6 +140,7 @@ from datetime import datetime, timedelta
 
 @router.post("", response_model=ResponseModel[TaskRead], status_code=201)
 async def create_task(
+    request: Request,
     payload: TaskCreate,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
@@ -174,15 +181,18 @@ async def create_task(
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务创建成功",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
 @router.post("/{task_id}/accept", response_model=ResponseModel[TaskRead])
 async def accept_task(
+    request: Request,
     task_id: int,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
@@ -196,15 +206,18 @@ async def accept_task(
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务接取成功",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
 @router.post("/{task_id}/cancel", response_model=ResponseModel[TaskRead])
 async def cancel_task(
+    request: Request,
     task_id: int,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
@@ -236,15 +249,18 @@ async def cancel_task(
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message=f"任务已成功取消，原状态为 '{old_status}'",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
 @router.post("/{task_id}/status", response_model=ResponseModel[TaskRead])
 async def update_task_status(
+    request: Request,
     task_id: int,
     payload: TaskUpdate,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
@@ -272,8 +288,10 @@ async def update_task_status(
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message=f"任务状态从 '{old_status}' 更新为 '{payload.status}' 成功",
-        data=task
+        data=task,
+        request_id=request_id
     )

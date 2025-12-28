@@ -4,7 +4,7 @@
       <h2>找回密码</h2>
       <p class="subtitle">请输入您的邮箱地址，我们将发送重置密码链接</p>
       
-      <n-form :model="form" :rules="rules" ref="formRef">
+      <n-form :model="form" ref="formRef">
         <n-form-item path="email" label="邮箱">
           <n-input v-model:value="form.email" placeholder="student@campus.edu" />
         </n-form-item>
@@ -97,28 +97,12 @@ const form = reactive({
   captcha: ''
 })
 
-const rules: FormRules = {
-  email: [
-    { required: true, message: '请输入邮箱' },
-    { type: 'email', message: '邮箱格式不正确' },
-  ],
-  captcha: [
-    { required: true, message: '请输入验证码' },
-    { len: 6, message: '验证码为6位字符' }
-  ]
-}
+
 
 // 获取验证码
 function getCaptcha() {
   if (!form.email) {
     message.warning('请先输入邮箱地址')
-    return
-  }
-  
-  // 验证邮箱格式
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(form.email)) {
-    message.warning('请输入正确的邮箱格式')
     return
   }
   
@@ -136,22 +120,23 @@ function getCaptcha() {
 }
 
 // 提交表单
-function handleSubmit() {
-  formRef.value?.validate(async (errors) => {
-    if (!errors) {
-      loading.value = true
-      try {
-        // 模拟发送重置密码链接
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        message.success('密码重置链接已发送至您的邮箱，请注意查收')
-        router.push('/login')
-      } catch (error) {
-        message.error('发送失败，请稍后重试')
-      } finally {
-        loading.value = false
-      }
-    }
-  })
+async function handleSubmit() {
+  if (!form.email || !form.captcha) {
+    message.warning('请填写邮箱和验证码')
+    return
+  }
+  
+  loading.value = true
+  try {
+    // 模拟发送重置密码链接
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    message.success('密码重置链接已发送至您的邮箱，请注意查收')
+    router.push('/login')
+  } catch (error) {
+    message.error('发送失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

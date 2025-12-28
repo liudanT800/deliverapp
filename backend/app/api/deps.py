@@ -38,7 +38,8 @@ async def get_current_user(
     except JWTError as e:
         logger.error(f"JWT decode error: {str(e)}")
         logger.error(f"Token: {token}")
-        logger.error(f"Secret key: {settings.secret_key}")
+        logger.error(f"Secret key length: {len(settings.secret_key) if settings.secret_key else 'None'}")
+        logger.error(f"JWT algorithm: {settings.jwt_algorithm}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Could not validate credentials")
 
     if not token_data.sub:
