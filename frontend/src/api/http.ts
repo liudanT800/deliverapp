@@ -17,7 +17,7 @@ const REQUEST_RETRY_CONFIG = {
 }
 
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:9800/api',
   timeout: 30_000, // 增加超时时间到30秒
   headers: {
     'Content-Type': 'application/json',

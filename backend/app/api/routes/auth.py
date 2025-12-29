@@ -35,7 +35,6 @@ async def register_user(
             full_name=payload.full_name,
             phone=payload.phone,
             campus=payload.campus,
-            avatar_url=payload.avatar_url,
             hashed_password=get_password_hash(payload.password),
             credit_score=3.5,
         )

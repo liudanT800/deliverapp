@@ -47,7 +47,6 @@ export interface UserResponse {
   fullName: string;
   phone: string;
   campus: string;
-  avatarUrl?: string;
   creditScore: number;
   createdAt: string;
   updatedAt?: string;
@@ -75,7 +74,6 @@ export interface UpdateProfilePayload {
   fullName?: string;
   phone?: string;
   campus?: string;
-  avatarUrl?: string;
 }
 
 export function updateProfile(payload: UpdateProfilePayload): Promise<UserResponse> {

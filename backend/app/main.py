@@ -2,6 +2,8 @@ import asyncio
 import uuid
 from typing import Dict, Any
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -14,7 +16,16 @@ from app.db.session import engine
 from app.schemas.response import ResponseModel, ErrorResponse
 from app.services.task_cleanup_service import start_cleanup_scheduler
 
-app = FastAPI(title=settings.project_name)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # 启动定时清理任务
+    asyncio.create_task(start_cleanup_scheduler())
+    yield
+
+app = FastAPI(title=settings.project_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,11 +78,6 @@ async def general_exception_handler(request, exc):
         status_code=500,
         content=error_response.model_dump()
     )
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     
     # 启动定时清理任务
     asyncio.create_task(start_cleanup_scheduler())

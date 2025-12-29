@@ -109,8 +109,11 @@ class CreditScoringService:
             }
         
         # 检查用户是否已经有太多进行中的任务
+        # 安全获取 tasks_taken
+        tasks_taken = getattr(user, 'tasks_taken', [])
+        
         active_tasks_count = sum(
-            1 for t in user.tasks_taken
+            1 for t in tasks_taken
             if t.status not in [TaskStatus.completed, TaskStatus.cancelled]
         )
         

@@ -3,19 +3,11 @@
     <section class="card profile-header">
       <div class="avatar-section">
         <n-avatar 
-          v-if="auth.user.avatarUrl" 
-          :src="auth.user.avatarUrl" 
-          :size="72" 
-          round
-        />
-        <n-avatar 
-          v-else 
           :size="72" 
           round
         >
           {{ initials }}
         </n-avatar>
-        <n-button text @click="changeAvatar">更换头像</n-button>
       </div>
       <div class="user-info">
         <h2>{{ auth.user.fullName }}</h2>
@@ -271,12 +263,6 @@ function getTrendLabel(trend: string): string {
 
 function logout() {
   auth.logout()
-}
-
-// 更换头像
-function changeAvatar() {
-  // 模拟更换头像功能
-  console.log('更换头像')
 }
 
 // 保存个人资料

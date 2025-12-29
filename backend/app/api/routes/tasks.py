@@ -200,7 +200,28 @@ async def accept_task(
     task = await session.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    task_service.ensure_can_accept(task, current_user)
+    
+    # 重新加载用户信息，包含 tasks_taken 和 tasks_created 关系，用于信用服务检查
+    stmt = (
+        select(User)
+        .where(User.id == current_user.id)
+        .options(
+            selectinload(User.tasks_taken),
+            selectinload(User.tasks_created)
+        )
+    )
+    result = await session.execute(stmt)
+    user_with_tasks = result.scalar_one()
+
+    try:
+        task_service.ensure_can_accept(task, user_with_tasks)
+    except Exception as e:
+        # 捕获所有异常并打印，方便调试
+        print(f"Error in ensure_can_accept: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise e
+
     task.assigned_to_id = current_user.id
     task.status = TaskStatus.accepted
     await session.commit()
