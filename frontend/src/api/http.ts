@@ -56,7 +56,11 @@ http.interceptors.response.use(
   (response) => {
     // 如果响应中有错误信息，则抛出错误
     if (response.data && response.data.success === false) {
-      return Promise.reject(new Error(response.data.message || '请求失败'))
+      // 即使是 200 OK，如果 success 为 false，也视为业务错误
+      // 构造一个类似 AxiosError 的对象，以便后续 catch 块能统一处理
+      const error = new Error(response.data.message || '请求失败');
+      (error as any).response = response;
+      return Promise.reject(error);
     }
     return response
   },

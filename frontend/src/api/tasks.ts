@@ -69,10 +69,18 @@ export function createTaskRequest(payload: CreateTaskPayload): Promise<Task> {
 
 export function acceptTaskRequest(id: number): Promise<Task> {
   return http.post(`/tasks/${id}/accept`)
-    .then((res) => res.data.data)
+    .then((res) => {
+      // 检查是否是调试模式返回的错误
+      if (res.data.success === false) {
+        throw new Error(res.data.message);
+      }
+      return res.data.data;
+    })
     .catch((error) => {
       console.error('接取任务失败:', error);
-      throw error;
+      // 如果是业务错误（200 OK 但 success=false），error.response 可能存在
+      const message = error.response?.data?.message || error.message || '接取任务失败';
+      throw new Error(message);
     });
 }
 

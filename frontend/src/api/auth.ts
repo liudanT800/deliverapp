@@ -20,12 +20,8 @@ export function loginRequest(payload: LoginRequestPayload): Promise<LoginRespons
   return http
     .post('/auth/login', payload)
     .then((res) => {
-      // 将后端返回的下划线格式转换为前端期望的驼峰格式
-      const backendData: BackendTokenResponse = res.data.data;
-      return {
-        accessToken: backendData.access_token,
-        tokenType: backendData.token_type,
-      };
+      // 后端使用了 CamelModel，返回的已经是 accessToken 和 tokenType
+      return res.data.data;
     })
     .catch((error) => {
       console.error('登录请求失败:', error);

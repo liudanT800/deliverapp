@@ -22,7 +22,7 @@ class TaskBase(CamelModel):
     grab_expires_at: Optional[datetime] = None  # 抢单截止时间
     # 新增字段
     category: Optional[TaskCategory] = None
-    urgency: TaskUrgency = TaskUrgency.medium
+    urgency: Optional[TaskUrgency] = TaskUrgency.medium
 
 
 class TaskCreate(TaskBase):
