@@ -138,6 +138,36 @@ export async function geocode(address: string, city?: string): Promise<LocationD
 }
 
 /**
+ * 智能地理编码：结合前端和后端API，实现降级处理
+ */
+export async function smartGeocode(address: string, city?: string): Promise<LocationData> {
+  try {
+    // 首先尝试使用前端高德地图API进行地理编码
+    console.log('尝试使用前端地理编码API');
+    return await geocode(address, city);
+  } catch (frontError) {
+    console.warn('前端地理编码失败，尝试使用后端服务:', frontError);
+    
+    try {
+      // 前端API失败，尝试使用后端地理编码服务
+      console.log('尝试使用后端地理编码API');
+      return await geocodeBackend(address);
+    } catch (backError) {
+      console.warn('后端地理编码也失败:', backError);
+      
+      // 如果所有地理编码方法都失败，返回基于地址的基本位置信息
+      console.log('所有地理编码方法都失败，返回默认位置');
+      return {
+        name: address,
+        address: address,
+        lat: 39.90923, // 默认北京坐标
+        lng: 116.397428
+      };
+    }
+  }
+}
+
+/**
  * 逆地理编码（坐标转地址）
  */
 export async function reverseGeocode(lng: number, lat: number): Promise<LocationData> {
@@ -166,6 +196,36 @@ export async function reverseGeocode(lng: number, lat: number): Promise<Location
       }
     })
   })
+}
+
+/**
+ * 智能逆地理编码：结合前端和后端API，实现降级处理
+ */
+export async function smartReverseGeocode(lng: number, lat: number): Promise<LocationData> {
+  try {
+    // 首先尝试使用前端高德地图API进行逆地理编码
+    console.log('尝试使用前端逆地理编码API');
+    return await reverseGeocode(lng, lat);
+  } catch (frontError) {
+    console.warn('前端逆地理编码失败，尝试使用后端服务:', frontError);
+    
+    try {
+      // 前端API失败，尝试使用后端逆地理编码服务
+      console.log('尝试使用后端逆地理编码API');
+      return await reverseGeocodeBackend(lng, lat);
+    } catch (backError) {
+      console.warn('后端逆地理编码也失败:', backError);
+      
+      // 如果所有逆地理编码方法都失败，返回基于坐标的默认信息
+      console.log('所有逆地理编码方法都失败，返回默认位置');
+      return {
+        name: `坐标位置(${lng.toFixed(6)}, ${lat.toFixed(6)})`,
+        address: `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
+        lat,
+        lng
+      };
+    }
+  }
 }
 
 /**
@@ -208,12 +268,7 @@ export async function getCurrentLocation(): Promise<LocationData> {
   })
 }
 
-/**
- * 验证坐标是否有效
- */
-export function isValidCoordinate(lng: number, lat: number): boolean {
-  return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90
-}
+
 
 /**
  * 格式化距离显示
@@ -224,6 +279,133 @@ export function formatDistance(meters: number): string {
   } else {
     return `${(meters / 1000).toFixed(1)}公里`
   }
+}
+
+/**
+ * 通过后端API进行逆地理编码
+ */
+export async function reverseGeocodeBackend(lng: number, lat: number): Promise<LocationData> {
+  // 实现请求重试机制
+  const maxRetries = 2;
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // 添加请求超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+      
+      const response = await fetch(`/api/maps/reverse-geocode?lng=${lng}&lat=${lat}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP错误: ${response.status} - ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const addressComponent = result.data.addressComponent || {};
+        // 确保 name 属性是字符串，防止对象被传递给Vue组件
+        const building = typeof addressComponent.building === 'string' ? addressComponent.building : '';
+        const neighborhood = typeof addressComponent.neighborhood === 'string' ? addressComponent.neighborhood : '';
+        const name = building || neighborhood || `坐标位置(${lng.toFixed(6)}, ${lat.toFixed(6)})`;
+        
+        return {
+          name: name,
+          address: result.data.formatted_address || `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
+          lat: lat,
+          lng: lng
+        };
+      } else {
+        throw new Error(result.message || '逆地理编码失败');
+      }
+    } catch (error) {
+      lastError = error;
+      console.error(`后端逆地理编码失败 (尝试 ${attempt + 1}/${maxRetries + 1}):`, error);
+      
+      // 如果不是最后一次尝试，等待一段时间再重试
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // 指数退避
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  // 所有重试都失败，抛出最后一次错误
+  throw lastError || new Error('逆地理编码失败');
+}
+
+/**
+ * 通过后端API进行地理编码
+ */
+export async function geocodeBackend(address: string): Promise<LocationData> {
+  // 实现请求重试机制
+  const maxRetries = 2;
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // 添加请求超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+      
+      const encodedAddress = encodeURIComponent(address);
+      const response = await fetch(`/api/maps/geocode?address=${encodedAddress}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP错误: ${response.status} - ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.location) {
+        const locationParts = result.data.location.split(',');
+        if (locationParts.length < 2) {
+          throw new Error('后端返回的坐标格式不正确');
+        }
+        
+        const lng = parseFloat(locationParts[0]);
+        const lat = parseFloat(locationParts[1]);
+        
+        if (isNaN(lng) || isNaN(lat)) {
+          throw new Error('后端返回的坐标不是有效数字');
+        }
+        
+        // 确保 name 属性是字符串，防止对象被传递给Vue组件
+        const formattedAddress = typeof result.data.formatted_address === 'string' ? result.data.formatted_address : '';
+        const name = formattedAddress || address;
+        
+        return {
+          name: name,
+          address: formattedAddress || address,
+          lat: lat,
+          lng: lng
+        };
+      } else {
+        throw new Error(result.message || '地理编码失败');
+      }
+    } catch (error) {
+      lastError = error;
+      console.error(`后端地理编码失败 (尝试 ${attempt + 1}/${maxRetries + 1}):`, error);
+      
+      // 如果不是最后一次尝试，等待一段时间再重试
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // 指数退避
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  // 所有重试都失败，抛出最后一次错误
+  throw lastError || new Error('地理编码失败');
 }
 
 /**

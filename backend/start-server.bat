@@ -17,11 +17,6 @@ set DATABASE_URL=sqlite+aiosqlite:///./test.db
 set DEVELOPMENT_MODE=true
 
 echo 启动服务器...
-uvicorn app.main:app --reload --host 127.0.0.1 --port 9800
-
-if errorlevel 1 (
-    echo 服务器异常退出
-    pause
-)
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 pause

@@ -13,11 +13,22 @@
         <div>
           <small>取件</small>
           <strong>{{ task.pickupLocationName }}</strong>
+          <p v-if="task.pickupLat && task.pickupLng" class="coordinates">坐标: {{ task.pickupLng.toFixed(6) }}, {{ task.pickupLat.toFixed(6) }}</p>
         </div>
         <div>
           <small>送达</small>
           <strong>{{ task.dropoffLocationName }}</strong>
+          <p v-if="task.dropoffLat && task.dropoffLng" class="coordinates">坐标: {{ task.dropoffLng.toFixed(6) }}, {{ task.dropoffLat.toFixed(6) }}</p>
         </div>
+      </div>
+      <!-- 新增地图查看按钮 -->
+      <div class="map-view" v-if="task.pickupLat && task.pickupLng && task.dropoffLat && task.dropoffLng">
+        <n-button @click="openMapView" quaternary type="primary" size="small">
+          <template #icon>
+            <n-icon><LocationIcon /></n-icon>
+          </template>
+          查看地图路线
+        </n-button>
       </div>
       <!-- 新增任务分类和紧急程度信息 -->
       <div class="task-tags">
@@ -95,7 +106,8 @@ import { useRoute, useRouter } from 'vue-router'
 import type { DropdownOption } from 'naive-ui'
 import { useTaskStore, TASK_STATUS_LABELS, TASK_CATEGORY_LABELS, TASK_URGENCY_LABELS } from '../stores/tasks'
 import { useAuthStore } from '../stores/auth'
-import { NAvatar, NTag, useMessage, useNotification } from 'naive-ui'
+import { NAvatar, NTag, useMessage, useNotification, NIcon } from 'naive-ui'
+import { LocationOutline as LocationIcon } from '@vicons/ionicons5'
 
 const tasks = useTaskStore()
 const auth = useAuthStore()
@@ -148,24 +160,32 @@ function statusLabel(status: string) {
   return TASK_STATUS_LABELS[status] ?? status
 }
 
-// 获取任务分类标签
-function categoryLabel(category: string): string {
-  return TASK_CATEGORY_LABELS[category] ?? category
-}
-
-// 获取紧急程度标签
-function urgencyLabel(urgency: string): string {
-  return TASK_URGENCY_LABELS[urgency] ?? urgency
-}
-
 // 根据紧急程度获取标签类型
-function urgencyTagType(urgency: string): "default" | "success" | "warning" | "error" {
+function urgencyTagType(urgency?: string): "default" | "success" | "warning" | "error" {
   switch (urgency) {
     case 'high': return 'error'
     case 'medium': return 'warning'
     case 'low': return 'success'
     default: return 'default'
   }
+}
+
+// 获取任务分类标签
+function categoryLabel(category?: string): string {
+  return TASK_CATEGORY_LABELS[category || ''] ?? (category || '其他')
+}
+
+// 获取紧急程度标签
+function urgencyLabel(urgency?: string): string {
+  return TASK_URGENCY_LABELS[urgency || ''] ?? (urgency || '未知')
+}
+
+function openMapView() {
+  if (!task.value) return;
+  
+  // 创建一个新窗口打开高德地图路线规划页面，从取件点到送达点
+  const url = `https://uri.amap.com/route?from=${task.value.pickupLng},${task.value.pickupLat},${task.value.pickupLocationName}&to=${task.value.dropoffLng},${task.value.dropoffLat},${task.value.dropoffLocationName}&fromtype=wp&tocounty=1`;
+  window.open(url, '_blank');
 }
 
 async function accept() {
@@ -238,6 +258,21 @@ onMounted(async () => {
   display: flex;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+/* 坐标显示样式 */
+.coordinates {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-family: monospace;
+}
+
+/* 地图查看按钮容器 */
+.map-view {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* 新增样式 */

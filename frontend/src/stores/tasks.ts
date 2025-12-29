@@ -1,82 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import http from '../api/http'
+import { apiService } from '../api/api-service'
 
-// 重新定义API函数以避免类型导入问题
-interface CreateTaskPayload {
-  title: string
-  description: string
-  pickupLocationName: string
-  dropoffLocationName: string
-  rewardAmount: number
-  expiresAt?: string
-  grabExpiresAt?: string
-  category?: string
-  urgency?: string
-  pickupLat?: number
-  pickupLng?: number
-  dropoffLat?: number
-  dropoffLng?: number
-}
+// 从API服务导入类型
+// 从API服务导入类型
+import type { CreateTaskPayload, Task } from '../api/tasks'
 
-function createTaskRequest(payload: CreateTaskPayload) {
-  return http.post('/tasks', payload).then((res) => res.data.data)
-}
 
-function fetchTasks(params?: Record<string, string | number | undefined>) {
-  return http
-    .get('/tasks', { params })
-    .then((res) => res.data.data)
-}
-
-function fetchTaskById(id: number) {
-  return http.get(`/tasks/${id}`).then((res) => res.data.data)
-}
-
-function acceptTaskRequest(id: number) {
-  return http.post(`/tasks/${id}/accept`).then((res) => res.data.data)
-}
-
-function updateTaskStatusRequest(id: number, status: string) {
-  return http
-    .post(`/tasks/${id}/status`, { status })
-    .then((res) => res.data.data)
-}
-
-function cancelTaskRequest(id: number) {
-  return http
-    .post(`/tasks/${id}/cancel`)
-    .then((res) => res.data.data)
-}
-
-export interface Task {
-  id: number
-  title: string
-  description: string
-  rewardAmount: number
-  pickupLocationName: string
-  dropoffLocationName: string
-  status: string
-  cancelledBy?: string
-  // 新增字段
-  category?: string
-  urgency?: string
-  pickupLat?: number
-  pickupLng?: number
-  dropoffLat?: number
-  dropoffLng?: number
-  createdAt: string
-  createdBy?: {
-    id: number
-    fullName: string
-    creditScore: number
-  }
-  assignedTo?: {
-    id: number
-    fullName: string
-  }
-}
-
+// 任务状态标签
 export const TASK_STATUS_LABELS: Record<string, string> = {
   pending: '待接单',
   accepted: '已接单',
@@ -109,38 +40,75 @@ export const useTaskStore = defineStore('tasks', () => {
   async function loadTasks(params?: Record<string, string | number>) {
     loading.value = true
     try {
-      items.value = await fetchTasks(params)
+      const response = await apiService.tasks.list(params);
+      if (response.success) {
+        items.value = response.data;
+      } else {
+        console.error('获取任务列表失败:', response.message);
+      }
     } finally {
       loading.value = false
     }
   }
 
   async function loadTask(id: number) {
-    currentTask.value = await fetchTaskById(id)
+    const response = await apiService.tasks.get(id);
+    if (response.success) {
+      currentTask.value = response.data;
+    } else {
+      console.error('获取任务详情失败:', response.message);
+    }
   }
 
   async function createTask(payload: CreateTaskPayload) {
-    const task = await createTaskRequest(payload)
-    items.value.unshift(task)
-    return task
+    const response = await apiService.tasks.create(payload);
+    if (response.success) {
+      const task = response.data;
+      items.value.unshift(task);
+      return task;
+    } else {
+      console.error('创建任务失败:', response.message);
+      throw new Error(response.message);
+    }
   }
 
   async function acceptTask(id: number) {
-    const task = await acceptTaskRequest(id)
-    await loadTasks()
-    currentTask.value = task
+    const response = await apiService.tasks.accept(id);
+    if (response.success) {
+      const task = response.data;
+      await loadTasks();
+      currentTask.value = task;
+      return task;
+    } else {
+      console.error('接取任务失败:', response.message);
+      throw new Error(response.message);
+    }
   }
 
   async function updateTaskStatus(id: number, status: string) {
-    const task = await updateTaskStatusRequest(id, status)
-    await loadTasks()
-    currentTask.value = task
+    const response = await apiService.tasks.updateStatus(id, status);
+    if (response.success) {
+      const task = response.data;
+      await loadTasks();
+      currentTask.value = task;
+      return task;
+    } else {
+      console.error('更新任务状态失败:', response.message);
+      throw new Error(response.message);
+    }
   }
 
   async function cancelTask(id: number) {
-    const task = await cancelTaskRequest(id)
-    await loadTasks()
-    currentTask.value = task
+    const response = await apiService.tasks.cancel(id);
+    if (response.success) {
+      const task = response.data;
+      await loadTasks();
+      currentTask.value = task;
+      return task;
+    } else {
+      console.error('取消任务失败:', response.message);
+      throw new Error(response.message);
+    }
   }
 
   return {

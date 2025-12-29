@@ -1,7 +1,7 @@
 from typing import Annotated
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,6 +18,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 @router.get("", response_model=ResponseModel[list[TaskRead]])
 async def list_tasks(
+    request: Request,
     keyword: str | None = None,
     status_filter: TaskStatus | None = Query(None, alias="status"),
     min_reward: float | None = None,
@@ -98,15 +99,18 @@ async def list_tasks(
     result = await session.execute(stmt)
     tasks = result.scalars().all()
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务列表获取成功",
-        data=tasks
+        data=tasks,
+        request_id=request_id
     )
 
 
 @router.get("/{task_id}", response_model=ResponseModel[TaskRead])
 async def get_task(
+    request: Request,
     task_id: int,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
 ):
@@ -123,10 +127,12 @@ async def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务详情获取成功",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
@@ -134,6 +140,7 @@ from datetime import datetime, timedelta
 
 @router.post("", response_model=ResponseModel[TaskRead], status_code=201)
 async def create_task(
+    request: Request,
     payload: TaskCreate,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
@@ -143,6 +150,29 @@ async def create_task(
     if task_data.get('grab_expires_at') is None:
         task_data['grab_expires_at'] = datetime.utcnow() + timedelta(hours=1)
     
+    # 如果没有提供经纬度，尝试通过地理编码获取
+    if task_data.get('pickup_location_name') and (task_data.get('pickup_lat') is None or task_data.get('pickup_lng') is None):
+        pickup_geocode = await task_service.geocode_location(task_data.get('pickup_location_name', ''))
+        if pickup_geocode and 'location' in pickup_geocode:
+            try:
+                lng, lat = pickup_geocode['location'].split(',')
+                task_data['pickup_lng'] = float(lng)
+                task_data['pickup_lat'] = float(lat)
+            except (ValueError, IndexError):
+                # 如果地理编码失败，记录警告但继续处理
+                print(f"地理编码失败，取件地点: {task_data.get('pickup_location_name')}")
+    
+    if task_data.get('dropoff_location_name') and (task_data.get('dropoff_lat') is None or task_data.get('dropoff_lng') is None):
+        dropoff_geocode = await task_service.geocode_location(task_data.get('dropoff_location_name', ''))
+        if dropoff_geocode and 'location' in dropoff_geocode:
+            try:
+                lng, lat = dropoff_geocode['location'].split(',')
+                task_data['dropoff_lng'] = float(lng)
+                task_data['dropoff_lat'] = float(lat)
+            except (ValueError, IndexError):
+                # 如果地理编码失败，记录警告但继续处理
+                print(f"地理编码失败，送达地点: {task_data.get('dropoff_location_name')}")
+    
     task = Task(
         **task_data,
         created_by_id=current_user.id,
@@ -151,15 +181,18 @@ async def create_task(
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务创建成功",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
 @router.post("/{task_id}/accept", response_model=ResponseModel[TaskRead])
 async def accept_task(
+    request: Request,
     task_id: int,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
@@ -167,42 +200,24 @@ async def accept_task(
     task = await session.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    
-    # 重新加载用户信息，包含 tasks_taken 和 tasks_created 关系，用于信用服务检查
-    stmt = (
-        select(User)
-        .where(User.id == current_user.id)
-        .options(
-            selectinload(User.tasks_taken),
-            selectinload(User.tasks_created)
-        )
-    )
-    result = await session.execute(stmt)
-    user_with_tasks = result.scalar_one()
-
-    try:
-        task_service.ensure_can_accept(task, user_with_tasks)
-    except Exception as e:
-        # 捕获所有异常并打印，方便调试
-        print(f"Error in ensure_can_accept: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise e
-
+    task_service.ensure_can_accept(task, current_user)
     task.assigned_to_id = current_user.id
     task.status = TaskStatus.accepted
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="任务接取成功",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
 @router.post("/{task_id}/cancel", response_model=ResponseModel[TaskRead])
 async def cancel_task(
+    request: Request,
     task_id: int,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
@@ -234,15 +249,18 @@ async def cancel_task(
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message=f"任务已成功取消，原状态为 '{old_status}'",
-        data=task
+        data=task,
+        request_id=request_id
     )
 
 
 @router.post("/{task_id}/status", response_model=ResponseModel[TaskRead])
 async def update_task_status(
+    request: Request,
     task_id: int,
     payload: TaskUpdate,
     session: Annotated[AsyncSession, Depends(deps.get_db)],
@@ -270,8 +288,10 @@ async def update_task_status(
     await session.commit()
     await session.refresh(task)
     
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message=f"任务状态从 '{old_status}' 更新为 '{payload.status}' 成功",
-        data=task
+        data=task,
+        request_id=request_id
     )

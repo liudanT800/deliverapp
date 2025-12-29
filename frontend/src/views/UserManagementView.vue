@@ -11,7 +11,7 @@
 
     <section class="card">
       <div class="toolbar">
-        <n-input v-model:value="searchKeyword" placeholder="搜索用户..." style="width: 300px;">
+        <n-input v-model:value="searchKeyword" placeholder="搜索用户..." class="search-input">
           <template #prefix>
             <n-icon size="20">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -126,7 +126,7 @@ const fetchUsers = async () => {
         id: 3,
         email: 'admin@campus.edu',
         fullName: '管理员',
-        phone: '13800139800',
+        phone: '13800138000',
         campus: '下沙校区',
         role: 'admin',
         verified: true,
@@ -287,6 +287,25 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+}
+
+.search-input {
+  min-width: 200px;
+  flex: 1;
+  max-width: 400px;
+}
+
+/* 响应式工具栏 */
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .search-input {
+    max-width: 100%;
+  }
 }
 
 /* 空状态页面样式 */

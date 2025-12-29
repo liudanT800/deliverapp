@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr
 
+from app.schemas.base import CamelModel
 
-class Token(BaseModel):
+class Token(CamelModel):
     access_token: str
     token_type: str = "bearer"
 

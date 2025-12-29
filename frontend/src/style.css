@@ -95,6 +95,32 @@ a {
 .n-select,
 .n-date-picker {
   border-radius: var(--radius-small);
+  width: 100%;
+}
+
+/* 确保输入框在flex容器中能正确收缩 */
+.n-input,
+.n-input-wrapper {
+  min-width: 0;
+}
+
+/* 输入框自适应大小 */
+.n-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 日期选择器自适应 */
+.n-date-picker {
+  width: 100%;
+}
+
+/* 输入框在不同容器中的响应式行为 */
+.n-form-item .n-input,
+.n-form-item .n-input-number,
+.n-form-item .n-select,
+.n-form-item .n-date-picker {
+  width: 100%;
 }
 
 /* 统一模态框样式 */

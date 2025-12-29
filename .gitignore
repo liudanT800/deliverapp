@@ -1,43 +1,13 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
 .venv/
-venv/
 env/
-ENV/
+__pycache__/
 .pytest_cache/
-*.log
-
-# Node / Frontend
+*.pyc
+*.pyo
+.DS_Store
 node_modules/
 dist/
 frontend/dist/
-.npm
-.eslintcache
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-backend/.env
-frontend/.env
-
-# IDEs
-.vscode/
-!.vscode/settings.json
-!.vscode/extensions.json
-!.vscode/launch.json
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Database
-*.db
+*.log
 deliverapp.db
-!backend/app/db/base.py
 

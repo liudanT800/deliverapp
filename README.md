@@ -18,6 +18,7 @@
 - SQLite / MySQL（数据库，开发环境默认SQLite）
 - JWT（身份认证）
 - Redis（可选，已包含依赖）
+- 高德地图Web服务API（距离计算、地理编码等）
 
 ### 项目结构
 
@@ -74,7 +75,7 @@ start-app.bat
 该脚本会自动：
 1. 创建并激活Python虚拟环境
 2. 安装后端依赖
-3. 启动后端服务（端口 9800）
+3. 启动后端服务（端口 8000）
 4. 安装前端依赖
 5. 启动前端服务（端口 4173）
 
@@ -100,7 +101,7 @@ pip install -r requirements.txt
 set SECRET_KEY=change-me
 set DATABASE_URL=sqlite+aiosqlite:///./test.db
 set DEVELOPMENT_MODE=true
-uvicorn app.main:app --reload --host 127.0.0.1 --port 9800
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 **数据库配置**
@@ -178,10 +179,11 @@ completed（已完成）
 - `DATABASE_URL` - 数据库连接URL（可选，默认SQLite）
 - `DEVELOPMENT_MODE` - 开发模式开关（可选，默认false）
 - `CORS_ORIGINS` - CORS允许的源（可选，默认 `http://localhost:4173`）
+- `AMAP_WEB_SERVICE_KEY` - 高德地图Web服务API密钥（可选，用于距离计算、地理编码等）
 
 **前端**
 - `VITE_AMAP_API_KEY` - 高德地图API密钥（必填，用于地图功能）
-- `VITE_API_PROXY` - API代理目标地址（可选，默认 `http://localhost:9800`）
+- `VITE_API_PROXY` - API代理目标地址（可选，默认 `http://localhost:8000`）
 
 ### 地图功能说明
 

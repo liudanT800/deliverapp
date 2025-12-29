@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+import logging
 
 from app.api import deps
 from app.models.user import User
@@ -6,20 +7,29 @@ from app.schemas.user import UserRead, UserUpdate
 from app.schemas.response import ResponseModel
 from app.services.credit_service import credit_service
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=ResponseModel[UserRead])
-async def read_current_user(current_user: User = Depends(deps.get_current_active_user)):
+async def read_current_user(
+    request: Request,
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    logger.info(f"获取当前用户信息: {current_user.email}")
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="用户信息获取成功",
-        data=current_user
+        data=current_user,
+        request_id=request_id
     )
 
 
 @router.put("/me", response_model=ResponseModel[UserRead])
 async def update_current_user(
+    request: Request,
     payload: UserUpdate,
     current_user: User = Depends(deps.get_current_active_user),
     session = Depends(deps.get_db),
@@ -32,18 +42,24 @@ async def update_current_user(
     await session.commit()
     await session.refresh(current_user)
 
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="用户信息更新成功",
-        data=current_user
+        data=current_user,
+        request_id=request_id
     )
 
 
 @router.get("/me/credit", response_model=ResponseModel[dict])
-async def get_credit_info(current_user: User = Depends(deps.get_current_active_user)):
+async def get_credit_info(
+    request: Request,
+    current_user: User = Depends(deps.get_current_active_user)
+):
     """获取用户的信用评分详情"""
-    credit_info = credit_service.assess_user_reliability(current_user)
+    credit_info = await credit_service.assess_user_reliability(current_user)
 
+    request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="信用信息获取成功",
@@ -59,7 +75,8 @@ async def get_credit_info(current_user: User = Depends(deps.get_current_active_u
                 "taken": credit_info['total_taken']
             },
             "next_level_requirements": _get_next_level_requirements(current_user.credit_score)
-        }
+        },
+        request_id=request_id
     )
 
 

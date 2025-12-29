@@ -3,25 +3,21 @@
     <section class="card">
       <h2>登录顺路带</h2>
       <p class="subtitle">使用校园邮箱进入互助平台</p>
-      <n-form :model="form" :rules="rules" ref="formRef">
+      <n-form :model="form" ref="formRef" class="login-form">
         <n-form-item path="email" label="邮箱">
           <n-input 
             v-model:value="form.email" 
             placeholder="student@campus.edu" 
-            @update:value="handleEmailInput"
           />
-          <div v-if="emailError" class="input-hint error">{{ emailError }}</div>
-          <div v-else class="input-hint">请输入有效的校园邮箱地址</div>
+          <div class="input-hint">请输入有效的校园邮箱地址</div>
         </n-form-item>
         <n-form-item path="password" label="密码">
           <n-input 
             v-model:value="form.password" 
             type="password" 
             show-password-on="click" 
-            @update:value="handlePasswordInput"
           />
-          <div v-if="passwordError" class="input-hint error">{{ passwordError }}</div>
-          <div v-else class="input-hint">密码至少6位字符</div>
+          <div class="input-hint">请输入密码</div>
         </n-form-item>
         <div class="form-options">
           <n-checkbox v-model:checked="rememberMe">记住我</n-checkbox>
@@ -32,7 +28,6 @@
           block
           :loading="auth.loading"
           @click="handleLogin"
-          :disabled="isFormInvalid"
         >
           {{ auth.loading ? '登录中...' : '登录' }}
         </n-button>
@@ -101,84 +96,41 @@ import { reactive, ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import type { FormInst, FormRules } from 'naive-ui'
-import { NIcon } from 'naive-ui'
+import { NIcon, useMessage } from 'naive-ui'
 
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const message = useMessage()
 
 const formRef = ref<FormInst | null>(null)
 const rememberMe = ref(false)
-const emailError = ref('')
-const passwordError = ref('')
 
 const form = reactive({
   email: '',
   password: '',
 })
 
-// 实时验证表单
-const isFormInvalid = computed(() => {
-  return !form.email || !form.password || !!emailError.value || !!passwordError.value || form.password.length < 6
-})
-
-// 处理邮箱输入
-function handleEmailInput(value: string) {
-  form.email = value
-  // 清除之前的错误
-  emailError.value = ''
-  
-  // 验证邮箱格式
-  if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-    emailError.value = '请输入有效的邮箱地址'
-  }
-}
-
-// 处理密码输入
-function handlePasswordInput(value: string) {
-  form.password = value
-  // 清除之前的错误
-  passwordError.value = ''
-  
-  // 验证密码长度
-  if (value && value.length < 6) {
-    passwordError.value = '密码至少6位字符'
-  }
-}
-
-const rules: FormRules = {
-  email: [
-    { required: true, message: '请输入邮箱' },
-    { type: 'email', message: '邮箱格式不正确' },
-  ],
-  password: [
-    { required: true, message: '请输入密码' },
-    { min: 6, message: '密码至少6位' },
-    { max: 72, message: '密码不能超过72个字符' }
-  ],
-}
-
 async function handleLogin() {
-  // 执行最终验证
-  formRef.value?.validate(async (errors) => {
-    if (!errors) {
-      // 如果选择了记住我，保存邮箱到localStorage
-      if (rememberMe.value) {
-        localStorage.setItem('rememberedEmail', form.email)
-      } else {
-        localStorage.removeItem('rememberedEmail')
-      }
-      
-      try {
-        const result = await auth.login(form)
-        const redirect = (route.query.redirect as string) ?? '/'
-        router.replace(redirect)
-      } catch (error: any) {
-        // 显示登录错误
-        passwordError.value = error.message || '用户名或密码错误，请重试'
-      }
-    }
-  })
+  if (!form.email || !form.password) {
+    message.warning('请填写邮箱和密码')
+    return
+  }
+  
+  // 如果选择了记住我，保存邮箱到localStorage
+  if (rememberMe.value) {
+    localStorage.setItem('rememberedEmail', form.email)
+  } else {
+    localStorage.removeItem('rememberedEmail')
+  }
+  
+  try {
+    const result = await auth.login(form)
+    const redirect = (route.query.redirect as string) ?? '/'
+    router.replace(redirect)
+  } catch (error: any) {
+    message.error(error.message || '登录失败')
+  }
 }
 
 // 页面加载时，如果之前选择了记住我，则填充邮箱
@@ -276,6 +228,20 @@ aside li {
   gap: 0.75rem;
 }
 
+/* 登录表单样式 */
+.login-form {
+  width: 100%;
+}
+
+.login-form .n-form-item {
+  margin-bottom: 1.25rem;
+}
+
+.login-form .n-input {
+  width: 100%;
+  min-width: 0;
+}
+
 /* 新增输入提示样式 */
 .input-hint {
   font-size: 0.85rem;
@@ -286,5 +252,16 @@ aside li {
 
 .input-hint.error {
   color: var(--error-color);
+}
+
+/* 响应式登录表单 */
+@media (max-width: 480px) {
+  .card {
+    padding: 1.5rem;
+  }
+  
+  .login-form .n-input {
+    font-size: 16px; /* 防止iOS缩放 */
+  }
 }
 </style>

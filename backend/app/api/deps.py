@@ -1,4 +1,5 @@
 from typing import Annotated
+import logging
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -10,6 +11,9 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.models.user import User
 from app.schemas.auth import TokenPayload
+
+# 设置日志
+logger = logging.getLogger(__name__)
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -30,7 +34,12 @@ async def get_current_user(
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
         token_data = TokenPayload(**payload)
-    except JWTError:
+        logger.debug(f"Decoded token payload: {payload}")
+    except JWTError as e:
+        logger.error(f"JWT decode error: {str(e)}")
+        logger.error(f"Token: {token}")
+        logger.error(f"Secret key length: {len(settings.secret_key) if settings.secret_key else 'None'}")
+        logger.error(f"JWT algorithm: {settings.jwt_algorithm}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Could not validate credentials")
 
     if not token_data.sub:
@@ -39,6 +48,7 @@ async def get_current_user(
     result = await session.execute(select(User).where(User.email == token_data.sub))
     user = result.scalar_one_or_none()
     if not user:
+        logger.error(f"User not found for email: {token_data.sub}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
 

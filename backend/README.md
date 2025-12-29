@@ -12,7 +12,7 @@ set DATABASE_URL=mysql+aiomysql://user:pass@localhost:3306/deliverapp
 uvicorn app.main:app --reload
 ```
 
-- 默认 API 前缀 `http://localhost:9800/api`
+- 默认 API 前缀 `http://localhost:8000/api`
 - 依赖 MySQL 8，若未准备数据库，可暂时使用 `sqlite+aiosqlite:///./deliverapp.db`
 
 ### 目录说明

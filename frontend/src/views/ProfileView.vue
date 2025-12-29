@@ -15,6 +15,7 @@
         >
           {{ initials }}
         </n-avatar>
+        <n-button text @click="changeAvatar">更换头像</n-button>
       </div>
       <div class="user-info">
         <h2>{{ auth.user.fullName }}</h2>
@@ -272,6 +273,12 @@ function logout() {
   auth.logout()
 }
 
+// 更换头像
+function changeAvatar() {
+  // 模拟更换头像功能
+  console.log('更换头像')
+}
+
 // 保存个人资料
 async function saveProfile() {
   editFormRef.value?.validate(async (errors) => {
@@ -289,6 +296,7 @@ async function saveProfile() {
         message.success('资料更新成功')
         showEditModal.value = false
       } catch (error) {
+        message.error('更新失败: ' + (error as Error).message)
       } finally {
         saving.value = false
       }

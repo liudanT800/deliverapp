@@ -68,6 +68,7 @@ class Task(Base):
     # 添加索引以提高查询性能
     __table_args__ = (
         Index('ix_task_status_created_at', 'status', 'created_at'),
+        Index('ix_task_grab_expires_at', 'grab_expires_at'),
     )
 
     created_by_id: Mapped[int] = mapped_column(

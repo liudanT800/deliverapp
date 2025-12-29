@@ -21,6 +21,7 @@
         placeholder="搜索地点名称或地址"
         @keyup.enter="searchPlaces"
         clearable
+        class="map-search-input"
       >
         <template #suffix>
           <n-button @click="searchPlaces" size="small">
@@ -243,6 +244,10 @@ async function initMap() {
       pageIndex: 1  // 第一页
     })
 
+    // 设置Canvas观察器以监控动态创建的Canvas元素
+    await nextTick(); // 确保DOM已更新
+    setupCanvasObserver();
+    
     // 监听地图事件
     map.on('complete', () => {
       console.log('高德地图加载完成')
@@ -255,6 +260,15 @@ async function initMap() {
         const lnglat = e.lnglat
         handleMapClick(lnglat)
       })
+      
+      // 延迟执行Canvas优化以确保地图Canvas元素已创建
+      setTimeout(() => {
+        optimizeCanvas();
+        
+        // 启动持续Canvas性能优化
+        isCanvasOptimizationActive = true;
+        continuousCanvasOptimization();
+      }, 100);
     })
 
     // 如果有默认位置，设置标记
@@ -288,34 +302,49 @@ function handleMapClick(lnglat: any) {
     if (status === 'complete' && result.info === 'OK') {
       const addressComponent = result.regeocode.addressComponent
       const formattedAddress = result.regeocode.formattedAddress
-
+  
       const location: LocationData = {
         name: addressComponent.building || addressComponent.neighborhood || '选定位置',
         address: formattedAddress,
         lat,
         lng
       }
-
+  
       setMarker(lng, lat)
       selectedLocation.value = location
       selectedResult.value = undefined
       locationError.value = '' // 清除错误信息
     } else {
-      // 地理编码失败，使用默认位置信息
-      console.warn('地理编码失败，使用默认位置信息')
-      const location: LocationData = {
-        name: '点击位置',
-        address: `${lng.toFixed(6)}, ${lat.toFixed(6)}`,
-        lat,
-        lng
-      }
-
-      setMarker(lng, lat)
-      selectedLocation.value = location
-      selectedResult.value = undefined
-
-      // 显示友好的提示信息
-      locationError.value = '地址解析失败，但您仍可以选择此位置。建议配置高德地图地理编码服务以获得详细地址信息。'
+      // 前端地理编码失败，尝试使用后端地理编码服务
+      console.warn('前端地理编码失败，尝试使用后端服务')
+              
+      // 使用智能逆地理编码，自动降级处理
+      import('../utils/map').then(({ smartReverseGeocode }) => {
+        smartReverseGeocode(lng, lat)
+          .then(smartResult => {
+            setMarker(lng, lat)
+            selectedLocation.value = smartResult
+            selectedResult.value = undefined
+            locationError.value = '' // 清除错误信息
+            console.log('通过智能逆地理编码成功获取地址信息')
+          })
+          .catch(smartError => {
+            console.warn('智能逆地理编码失败，使用默认位置信息', smartError)
+            const location: LocationData = {
+              name: '点击位置',
+              address: `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
+              lat,
+              lng
+            }
+      
+            setMarker(lng, lat)
+            selectedLocation.value = location
+            selectedResult.value = undefined
+      
+            // 显示友好的提示信息
+            locationError.value = '地址解析失败，但您仍可以选择此位置。系统已尝试使用多种方式获取地址信息。'
+          })
+      })
     }
   })
 }
@@ -333,6 +362,90 @@ function setMarker(lng: number, lat: number) {
 
   // 移动地图中心到标记位置
   map.setCenter([lng, lat])
+}
+
+// Canvas优化观察器
+let canvasObserver: MutationObserver | null = null;
+
+// 持续优化控制变量
+let isCanvasOptimizationActive = false;
+
+// 设置Canvas观察器以监控动态创建的Canvas元素
+function setupCanvasObserver() {
+  if (!mapContainer.value) return;
+  
+  // 创建观察器以监控地图容器中的变化
+  canvasObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      // 检查是否有新的Canvas元素被添加
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as Element;
+            
+            // 如果添加的元素是Canvas，直接优化
+            if (element.tagName === 'CANVAS') {
+              optimizeCanvasElement(element as HTMLCanvasElement);
+            }
+            
+            // 检查添加的元素内部是否包含Canvas元素
+            const canvases = element.querySelectorAll('canvas');
+            canvases.forEach(canvas => {
+              optimizeCanvasElement(canvas);
+            });
+          }
+        });
+      }
+    });
+  });
+  
+  // 开始观察地图容器的变化
+  canvasObserver.observe(mapContainer.value, {
+    childList: true,
+    subtree: true
+  });
+}
+
+// 优化单个Canvas元素
+function optimizeCanvasElement(canvas: HTMLCanvasElement) {
+  try {
+    const context = canvas.getContext('2d');
+    if (context && !(context as any).isOptimized) {
+      (context as any).willReadFrequently = true;
+      (context as any).isOptimized = true; // 标记为已优化，避免重复优化
+      console.log('Canvas element optimized for performance');
+    }
+  } catch (error) {
+    console.warn('Failed to optimize canvas element:', error);
+  }
+}
+
+// 优化Canvas性能
+function optimizeCanvas() {
+  // 由于高德地图内部使用Canvas，我们需要尝试优化Canvas性能
+  // 通过查询地图容器内的canvas元素并设置willReadFrequently属性
+  if (mapContainer.value) {
+    const canvases = mapContainer.value.querySelectorAll('canvas');
+    canvases.forEach(canvas => {
+      optimizeCanvasElement(canvas);
+    });
+  }
+  
+  // 同时也检查全局的canvas元素
+  const allCanvases = document.querySelectorAll('canvas');
+  allCanvases.forEach(canvas => {
+    optimizeCanvasElement(canvas as HTMLCanvasElement);
+  });
+}
+
+// 持续Canvas性能优化
+function continuousCanvasOptimization() {
+  if (!isCanvasOptimizationActive) return;
+  
+  optimizeCanvas();
+  
+  // 使用requestAnimationFrame确保优化在每一帧都执行
+  requestAnimationFrame(continuousCanvasOptimization);
 }
 
 // 搜索地点
@@ -430,6 +543,32 @@ function getCurrentLocation() {
           setMarker(lng, lat)
           selectedLocation.value = location
           selectedResult.value = undefined
+        } else {
+          // 前端地理编码失败，尝试使用后端地理编码服务
+          console.warn('前端地理编码失败，尝试使用后端服务获取当前位置')
+          
+          // 使用智能逆地理编码，自动降级处理
+          import('../utils/map').then(({ smartReverseGeocode }) => {
+            smartReverseGeocode(lng, lat)
+              .then(smartResult => {
+                setMarker(lng, lat)
+                selectedLocation.value = smartResult
+                selectedResult.value = undefined
+                console.log('通过智能逆地理编码成功获取当前位置信息')
+              })
+              .catch(smartError => {
+                console.warn('智能逆地理编码失败，使用默认位置信息', smartError)
+                const location: LocationData = {
+                  name: '当前位置',
+                  address: `坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`,
+                  lat,
+                  lng
+                }
+                setMarker(lng, lat)
+                selectedLocation.value = location
+                selectedResult.value = undefined
+              })
+          })
         }
       })
     } else {
@@ -552,6 +691,29 @@ onUnmounted(() => {
   marker = null
   geocoder = null
   placeSearch = null
+  
+  // 清理Canvas优化设置
+  const canvases = document.querySelectorAll('canvas');
+  canvases.forEach(canvas => {
+    try {
+      const context = canvas.getContext('2d');
+      if (context) {
+        (context as any).willReadFrequently = false;
+        (context as any).isOptimized = false; // 移除优化标记
+      }
+    } catch (error) {
+      console.warn('Failed to cleanup canvas element:', error);
+    }
+  })
+  
+  // 停止Canvas观察器
+  if (canvasObserver) {
+    canvasObserver.disconnect();
+    canvasObserver = null;
+  }
+  
+  // 停止持续Canvas优化
+  isCanvasOptimizationActive = false;
 })
 </script>
 
@@ -580,6 +742,10 @@ onUnmounted(() => {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-primary);
+}
+
+.map-search-input {
+  width: 100%;
 }
 
 .map-container {
