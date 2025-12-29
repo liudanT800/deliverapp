@@ -78,9 +78,6 @@ async def general_exception_handler(request, exc):
         status_code=500,
         content=error_response.model_dump()
     )
-    
-    # 启动定时清理任务
-    asyncio.create_task(start_cleanup_scheduler())
 
 
 @app.get("/healthz")

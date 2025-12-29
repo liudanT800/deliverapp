@@ -1,5 +1,6 @@
 from typing import Annotated
 from datetime import datetime, timedelta
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy import and_, or_, select
@@ -12,6 +13,8 @@ from app.models.user import User
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 from app.schemas.response import OperationResponse, ResponseModel
 from app.services import task_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -136,8 +139,6 @@ async def get_task(
     )
 
 
-from datetime import datetime, timedelta
-
 @router.post("", response_model=ResponseModel[TaskRead], status_code=201)
 async def create_task(
     request: Request,
@@ -179,7 +180,18 @@ async def create_task(
     )
     session.add(task)
     await session.commit()
-    await session.refresh(task)
+    
+    # 重新获取任务以加载关系
+    stmt = (
+        select(Task)
+        .where(Task.id == task.id)
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+    result = await session.execute(stmt)
+    task = result.scalar_one()
     
     request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
@@ -197,11 +209,7 @@ async def accept_task(
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
 ):
-    task = await session.get(Task, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
-    
-    # 重新加载用户信息，包含 tasks_taken 和 tasks_created 关系，用于信用服务检查
+    # 1. 先获取用户信息及其关联任务，用于信用检查
     stmt = (
         select(User)
         .where(User.id == current_user.id)
@@ -213,19 +221,47 @@ async def accept_task(
     result = await session.execute(stmt)
     user_with_tasks = result.scalar_one()
 
-    try:
-        task_service.ensure_can_accept(task, user_with_tasks)
-    except Exception as e:
-        # 捕获所有异常并打印，方便调试
-        print(f"Error in ensure_can_accept: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise e
+    # 2. 获取任务并加锁，防止并发接单
+    stmt = (
+        select(Task)
+        .where(Task.id == task_id)
+        .with_for_update()
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+    result = await session.execute(stmt)
+    task = result.scalar_one_or_none()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    # 3. 检查逻辑
+    task_service.ensure_can_accept(task, user_with_tasks)
 
-    task.assigned_to_id = current_user.id
+    # 4. 更新状态
+    task.assigned_to = user_with_tasks
     task.status = TaskStatus.accepted
-    await session.commit()
-    await session.refresh(task)
+    
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"接单提交失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"接单失败: {str(e)}")
+    
+    # 5. 重新获取以返回（确保关系已加载且对象未过期）
+    stmt = (
+        select(Task)
+        .where(Task.id == task_id)
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+    result = await session.execute(stmt)
+    task = result.scalar_one()
     
     request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
@@ -243,7 +279,18 @@ async def cancel_task(
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
 ):
-    task = await session.get(Task, task_id)
+    # 使用 selectinload 预加载关系
+    stmt = (
+        select(Task)
+        .where(Task.id == task_id)
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+    result = await session.execute(stmt)
+    task = result.scalar_one_or_none()
+    
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
 
@@ -268,7 +315,18 @@ async def cancel_task(
     task_service.update_credit_on_completion(task)
     
     await session.commit()
-    await session.refresh(task)
+    
+    # 重新获取任务以加载关系
+    stmt = (
+        select(Task)
+        .where(Task.id == task.id)
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+    result = await session.execute(stmt)
+    task = result.scalar_one()
     
     request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
@@ -287,7 +345,18 @@ async def update_task_status(
     session: Annotated[AsyncSession, Depends(deps.get_db)],
     current_user: Annotated[User, Depends(deps.get_current_active_user)],
 ):
-    task = await session.get(Task, task_id)
+    # 使用 selectinload 预加载关系
+    stmt = (
+        select(Task)
+        .where(Task.id == task_id)
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+    result = await session.execute(stmt)
+    task = result.scalar_one_or_none()
+    
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
 
@@ -307,7 +376,18 @@ async def update_task_status(
         task_service.update_credit_on_completion(task)
     
     await session.commit()
-    await session.refresh(task)
+    
+    # 重新获取任务以加载关系
+    stmt = (
+        select(Task)
+        .where(Task.id == task.id)
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+    result = await session.execute(stmt)
+    task = result.scalar_one()
     
     request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(

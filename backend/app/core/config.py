@@ -24,7 +24,22 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24
     jwt_algorithm: str = "HS256"
 
-    cors_origins: list[str] = ["http://localhost:4173", "http://localhost:4174", "http://localhost:5173", "http://localhost:3000", "http://localhost:8080", "http://localhost:8081", "http://localhost:9000", "http://127.0.0.1:4173", "http://127.0.0.1:4174", "http://127.0.0.1:5173", "http://127.0.0.1:3000", "http://127.0.0.1:8080", "http://127.0.0.1:8081", "http://127.0.0.1:9000"]
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "http://localhost:4174",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://localhost:8081",
+        "http://localhost:9000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:4173",
+        "http://127.0.0.1:4174",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:8081",
+        "http://127.0.0.1:9000"
+    ]
     
     # 高德地图Web服务API密钥
     amap_web_service_key: str = "CHANGE_ME"

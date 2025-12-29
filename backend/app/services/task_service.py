@@ -28,9 +28,10 @@ def ensure_can_accept(task: Task, user: User) -> None:
         raise HTTPException(status_code=400, detail="抢单时间已过，无法接取任务")
     
     # 检查用户是否有资格接取任务
-    from app.services.user_service import can_accept_task
-    if not can_accept_task(user, task):
-        raise HTTPException(status_code=400, detail='无法接取此任务')
+    from app.services.credit_service import credit_service
+    result = credit_service.can_accept_task(user, task)
+    if not result['can_accept']:
+        raise HTTPException(status_code=400, detail=result['reason'])
 
 
 def ensure_can_update(task: Task, target_status: TaskStatus, user: User) -> None:

@@ -77,7 +77,7 @@ start-app.bat
 2. 安装后端依赖
 3. 启动后端服务（端口 9800）
 4. 安装前端依赖
-5. 启动前端服务（端口 4173）
+5. 启动前端服务（端口 5173）
 
 #### 方式二：分别启动
 
@@ -89,7 +89,7 @@ npm install  # 安装依赖，包括新添加的高德地图SDK
 npm run dev
 ```
 
-前端默认运行在 `http://localhost:4173`，开发服务器已配置代理，API请求会自动转发到后端。
+前端默认运行在 `http://localhost:5173`，开发服务器已配置代理，API请求会自动转发到后端。
 
 **后端启动**
 
@@ -178,7 +178,7 @@ completed（已完成）
 - `SECRET_KEY` - JWT密钥（必填）
 - `DATABASE_URL` - 数据库连接URL（可选，默认SQLite）
 - `DEVELOPMENT_MODE` - 开发模式开关（可选，默认false）
-- `CORS_ORIGINS` - CORS允许的源（可选，默认 `http://localhost:4173`）
+- `CORS_ORIGINS` - CORS允许的源（可选，默认 `http://localhost:5173`）
 - `AMAP_WEB_SERVICE_KEY` - 高德地图Web服务API密钥（可选，用于距离计算、地理编码等）
 
 **前端**

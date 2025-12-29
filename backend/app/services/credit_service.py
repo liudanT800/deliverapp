@@ -12,8 +12,6 @@ from app.models.task import Task, TaskStatus, TaskCategory, TaskUrgency
 class CreditScoringService:
     """信用评分服务"""
 
-    pass
-
     def calculate_task_score(self, task: Task, action: str, user_role: str) -> float:
         """
         计算任务相关操作的评分变化
@@ -43,25 +41,11 @@ class CreditScoringService:
         Returns:
             包含各种统计信息的字典
         """
-        from sqlalchemy import select
-        from app.db.session import get_session
-        from app.models.task import Task, TaskStatus
+        from app.models.task import TaskStatus
         
-        # 重新获取用户以确保关系被加载
-        async for session in get_session():
-            # 获取用户发布的任务数量
-            published_result = await session.execute(
-                select(Task).where(Task.created_by_id == user.id)
-            )
-            published_tasks = published_result.scalars().all()
-            
-            # 获取用户接取的任务数量
-            taken_result = await session.execute(
-                select(Task).where(Task.assigned_to_id == user.id)
-            )
-            taken_tasks = taken_result.scalars().all()
-            
-            break  # 只获取一次会话
+        # 获取用户的所有任务
+        published_tasks = getattr(user, 'tasks_created', [])
+        taken_tasks = getattr(user, 'tasks_taken', [])
         
         # 计算完成率
         published_completed = sum(1 for t in published_tasks if t.status == TaskStatus.completed)

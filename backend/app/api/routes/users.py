@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
 from app.api import deps
@@ -54,17 +55,33 @@ async def update_current_user(
 @router.get("/me/credit", response_model=ResponseModel[dict])
 async def get_credit_info(
     request: Request,
-    current_user: User = Depends(deps.get_current_active_user)
+    current_user: User = Depends(deps.get_current_active_user),
+    session: AsyncSession = Depends(deps.get_db),
 ):
     """获取用户的信用评分详情"""
-    credit_info = await credit_service.assess_user_reliability(current_user)
+    # 重新加载用户信息，包含 tasks_taken 和 tasks_created 关系
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    
+    stmt = (
+        select(User)
+        .where(User.id == current_user.id)
+        .options(
+            selectinload(User.tasks_taken),
+            selectinload(User.tasks_created)
+        )
+    )
+    result = await session.execute(stmt)
+    user_with_tasks = result.scalar_one()
+    
+    credit_info = await credit_service.assess_user_reliability(user_with_tasks)
 
     request_id = getattr(request.state, 'request_id', None)
     return ResponseModel(
         success=True,
         message="信用信息获取成功",
         data={
-            "current_score": current_user.credit_score,
+            "current_score": user_with_tasks.credit_score,
             "score_trend": credit_info['score_trend'],
             "completion_rates": {
                 "publish": credit_info['publish_completion_rate'],
@@ -74,7 +91,7 @@ async def get_credit_info(
                 "published": credit_info['total_published'],
                 "taken": credit_info['total_taken']
             },
-            "next_level_requirements": _get_next_level_requirements(current_user.credit_score)
+            "next_level_requirements": _get_next_level_requirements(user_with_tasks.credit_score)
         },
         request_id=request_id
     )

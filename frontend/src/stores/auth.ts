@@ -118,7 +118,6 @@ export const useAuthStore = defineStore('auth', () => {
     fullName?: string
     phone?: string
     campus?: string
-    avatarUrl?: string
   }) {
     if (!token.value) return
     try {

@@ -12,7 +12,6 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     phone = Column(String(20), nullable=True)
     campus = Column(String(100), nullable=True)
-    avatar_url = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(20), default="student")
     verified = Column(Boolean, default=False)

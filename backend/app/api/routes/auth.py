@@ -49,6 +49,9 @@ async def register_user(
             data=db_user,
             request_id=request_id
         )
+    except HTTPException:
+        await session.rollback()
+        raise
     except SQLAlchemyError as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"数据库操作失败: {str(e)}")
@@ -75,7 +78,6 @@ async def login(
                 full_name="测试用户",
                 phone="13800138000",
                 campus="测试校区",
-                avatar_url=None,
                 hashed_password=get_password_hash(payload.password),
                 credit_score=3.5,
             )

@@ -140,9 +140,6 @@
         <n-form-item label="所属校区" path="campus">
           <n-input v-model:value="editForm.campus" placeholder="请输入校区" />
         </n-form-item>
-        <n-form-item label="头像URL" path="avatarUrl">
-          <n-input v-model:value="editForm.avatarUrl" placeholder="请输入头像图片URL" />
-        </n-form-item>
         <div class="form-actions">
           <n-button @click="showEditModal = false">取消</n-button>
           <n-button type="primary" @click="saveProfile" :loading="saving">保存</n-button>
@@ -195,8 +192,7 @@ const totalCompleted = ref(24)
 const editForm = ref({
   fullName: '',
   phone: '',
-  campus: '',
-  avatarUrl: ''
+  campus: ''
 })
 
 // 编辑表单验证规则
@@ -275,8 +271,7 @@ async function saveProfile() {
         await auth.updateUserProfile({
           fullName: editForm.value.fullName,
           phone: editForm.value.phone,
-          campus: editForm.value.campus,
-          avatarUrl: editForm.value.avatarUrl || undefined
+          campus: editForm.value.campus
         })
         
         message.success('资料更新成功')
@@ -306,8 +301,7 @@ onMounted(async () => {
     editForm.value = {
       fullName: auth.user.fullName || '',
       phone: auth.user.phone || '',
-      campus: auth.user.campus || '',
-      avatarUrl: auth.user.avatarUrl || ''
+      campus: auth.user.campus || ''
     }
   }
 })
