@@ -111,6 +111,54 @@ async def list_tasks(
     )
 
 
+@router.get("/my", response_model=ResponseModel[list[TaskRead]])
+async def list_my_tasks(
+    request: Request,
+    role: str | None = Query(None, description="角色筛选: 'creator' (我发布的) 或 'assignee' (我接单的)"),
+    status_filter: TaskStatus | None = Query(None, alias="status"),
+    current_user: Annotated[User, Depends(deps.get_current_user)] = None,
+    session: Annotated[AsyncSession, Depends(deps.get_db)] = None,
+):
+    """获取与当前用户相关的所有任务"""
+    stmt = (
+        select(Task)
+        .options(
+            selectinload(Task.created_by),
+            selectinload(Task.assigned_to),
+        )
+    )
+
+    conditions = []
+    if role == "creator":
+        conditions.append(Task.created_by_id == current_user.id)
+    elif role == "assignee":
+        conditions.append(Task.assigned_to_id == current_user.id)
+    else:
+        # 默认返回所有相关的
+        conditions.append(
+            or_(
+                Task.created_by_id == current_user.id,
+                Task.assigned_to_id == current_user.id
+            )
+        )
+
+    if status_filter:
+        conditions.append(Task.status == status_filter)
+
+    stmt = stmt.where(and_(*conditions)).order_by(Task.created_at.desc())
+    
+    result = await session.execute(stmt)
+    tasks = result.scalars().all()
+    
+    request_id = getattr(request.state, 'request_id', None)
+    return ResponseModel(
+        success=True,
+        message="个人任务列表获取成功",
+        data=tasks,
+        request_id=request_id
+    )
+
+
 @router.get("/{task_id}", response_model=ResponseModel[TaskRead])
 async def get_task(
     request: Request,
