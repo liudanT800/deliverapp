@@ -4,6 +4,32 @@ from app.models.chat import Message
 from app.models.user import User
 from app.schemas.chat import MessageCreate, ChatSession
 from datetime import datetime
+from typing import Dict, List
+from fastapi import WebSocket
+
+class ConnectionManager:
+    def __init__(self):
+        # active_connections: { task_id: [WebSocket, ...] }
+        self.active_connections: Dict[int, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, task_id: int):
+        await websocket.accept()
+        if task_id not in self.active_connections:
+            self.active_connections[task_id] = []
+        self.active_connections[task_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, task_id: int):
+        if task_id in self.active_connections:
+            self.active_connections[task_id].remove(websocket)
+            if not self.active_connections[task_id]:
+                del self.active_connections[task_id]
+
+    async def broadcast_to_task(self, task_id: int, message: dict):
+        if task_id in self.active_connections:
+            for connection in self.active_connections[task_id]:
+                await connection.send_json(message)
+
+manager = ConnectionManager()
 
 class ChatService:
     async def send_message(self, db: AsyncSession, message_in: MessageCreate, sender_id: int):
