@@ -90,52 +90,35 @@ const roleTypeMap: Record<string, any> = {
 const fetchUsers = async () => {
   loading.value = true
   try {
-    // 这里应该调用实际的API接口获取用户列表
-    // 暂时使用模拟数据
-    //TODO: 替换为实际API调用
     const response = await http.get('/users')
-    users.value = response.data
-  } catch (error) {
+    if (response.data.success) {
+      // 转换API响应格式为前端期望的格式
+      users.value = response.data.data.map((user: any) => ({
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName, // API返回的是camelCase格式
+        phone: user.phone || null,
+        campus: user.campus || null,
+        role: user.role,
+        verified: user.verified,
+        isActive: user.isActive !== undefined ? user.isActive : true,
+        creditScore: user.creditScore,
+        createdAt: user.createdAt
+      }))
+    } else {
+      throw new Error(response.data.message || '获取用户列表失败')
+    }
+  } catch (error: any) {
     console.error('获取用户列表失败:', error)
-    // 使用模拟数据
-    users.value = [
-      {
-        id: 1,
-        email: 'zhangsan@campus.edu',
-        fullName: '张三',
-        phone: '13800138001',
-        campus: '下沙校区',
-        role: 'student',
-        verified: true,
-        isActive: true,
-        creditScore: 4.8,
-        createdAt: '2025-01-15T10:30:00Z'
-      },
-      {
-        id: 2,
-        email: 'lisi@campus.edu',
-        fullName: '李四',
-        phone: '13800138002',
-        campus: '临平校区',
-        role: 'student',
-        verified: true,
-        isActive: true,
-        creditScore: 4.2,
-        createdAt: '2025-02-20T14:15:00Z'
-      },
-      {
-        id: 3,
-        email: 'admin@campus.edu',
-        fullName: '管理员',
-        phone: '13800138000',
-        campus: '下沙校区',
-        role: 'admin',
-        verified: true,
-        isActive: true,
-        creditScore: 5.0,
-        createdAt: '2022-12-01T09:00:00Z'
-      }
-    ]
+    // 如果是权限不足，显示提示信息
+    if (error.response?.status === 403) {
+      // 这里可以显示权限不足的提示
+      users.value = []
+      console.warn('当前用户没有管理员权限，无法查看用户列表')
+    } else {
+      // 其他错误情况可以显示空状态
+      users.value = []
+    }
   } finally {
     loading.value = false
   }

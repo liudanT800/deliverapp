@@ -13,6 +13,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+@router.get("", response_model=ResponseModel[list[UserRead]])
+async def get_users(
+    request: Request,
+    session: AsyncSession = Depends(deps.get_db),
+    current_admin: User = Depends(deps.get_current_admin_user),
+):
+    """获取所有用户列表（管理员权限）"""
+    logger.info(f"管理员 {current_admin.email} 获取用户列表")
+    try:
+        from sqlalchemy import select
+        stmt = select(User)
+        result = await session.execute(stmt)
+        users = result.scalars().all()
+
+        request_id = getattr(request.state, 'request_id', None)
+        return ResponseModel(
+            success=True,
+            message="用户列表获取成功",
+            data=users,
+            request_id=request_id
+        )
+    except Exception as e:
+        logger.error(f"获取用户列表失败: {str(e)}")
+        return ResponseModel(
+            success=False,
+            message=f"获取用户列表失败: {str(e)}",
+            data=None,
+            request_id=getattr(request.state, 'request_id', None)
+        )
+
+
 @router.get("/me", response_model=ResponseModel[UserRead])
 async def read_current_user(
     request: Request,

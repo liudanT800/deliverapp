@@ -19,8 +19,26 @@ export interface Task {
   grabExpiresAt?: string;
   category?: string;
   urgency?: string;
+  // 后端返回的字段名（camelCase）
   createdById?: number;
   assignedToId?: number;
+  // 后端返回的完整对象
+  createdBy?: {
+    id: number;
+    email: string;
+    fullName: string;
+    role: string;
+    creditScore: number;
+    verified: boolean;
+  };
+  assignedTo?: {
+    id: number;
+    email: string;
+    fullName: string;
+    role: string;
+    creditScore: number;
+    verified: boolean;
+  };
 }
 
 export function fetchTasks(params?: Record<string, string | number | undefined>): Promise<Task[]> {
@@ -34,8 +52,17 @@ export function fetchTasks(params?: Record<string, string | number | undefined>)
 }
 
 export function fetchTaskById(id: number): Promise<Task> {
+  console.log('fetchTaskById called with id:', id, 'type:', typeof id)
+  if (!id || isNaN(id)) {
+    console.error('fetchTaskById: Invalid task id:', id)
+    throw new Error(`Invalid task id: ${id}`)
+  }
+
   return http.get(`/tasks/${id}`)
-    .then((res) => res.data.data)
+    .then((res) => {
+      console.log('fetchTaskById response for id', id, ':', res.data)
+      return res.data.data
+    })
     .catch((error) => {
       console.error('获取任务详情失败:', error);
       throw error;

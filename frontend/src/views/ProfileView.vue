@@ -2,10 +2,7 @@
   <div class="profile-page" v-if="auth.user">
     <section class="card profile-header">
       <div class="avatar-section">
-        <n-avatar 
-          :size="72" 
-          round
-        >
+        <n-avatar :size="72" round>
           {{ initials }}
         </n-avatar>
       </div>
@@ -31,15 +28,13 @@
           <n-grid-item>
             <n-card title="信用评分">
               <div class="chart-placeholder">
-                <n-progress
-                  type="circle"
-                  :percentage="(auth.user.creditScore / 5) * 100"
-                  :color="getColorFromScore(auth.user.creditScore)"
-                >
+                <n-progress type="circle" :percentage="(auth.user.creditScore / 5) * 100"
+                  :color="getColorFromScore(auth.user.creditScore)">
                   <span style="font-size: 18px; font-weight: bold;">{{ auth.user.creditScore }}</span>
                 </n-progress>
                 <p>当前评分 (满分5.0)</p>
-                <n-tag v-if="auth.creditInfo?.score_trend" :type="getTrendType(auth.creditInfo.score_trend)" size="small" style="margin-top: 8px;">
+                <n-tag v-if="auth.creditInfo?.score_trend" :type="getTrendType(auth.creditInfo.score_trend)"
+                  size="small" style="margin-top: 8px;">
                   {{ getTrendLabel(auth.creditInfo.score_trend) }}
                 </n-tag>
               </div>
@@ -48,17 +43,12 @@
           <n-grid-item>
             <n-card title="任务完成率">
               <div class="chart-placeholder">
-                <n-statistic
-                  label="发布任务完成率"
+                <n-statistic label="发布任务完成率"
                   :value="auth.creditInfo?.completion_rates?.publish ? (auth.creditInfo.completion_rates.publish * 100).toFixed(1) + '%' : '暂无数据'"
-                  value-style="color: #18a058;"
-                />
-                <n-statistic
-                  label="接单任务完成率"
+                  value-style="color: #18a058;" />
+                <n-statistic label="接单任务完成率"
                   :value="auth.creditInfo?.completion_rates?.take ? (auth.creditInfo.completion_rates.take * 100).toFixed(1) + '%' : '暂无数据'"
-                  value-style="color: #2080f0;"
-                  style="margin-top: 20px;"
-                />
+                  value-style="color: #2080f0;" style="margin-top: 20px;" />
               </div>
             </n-card>
           </n-grid-item>
@@ -66,11 +56,9 @@
             <n-card title="等级目标">
               <div class="chart-placeholder">
                 <div v-if="auth.creditInfo?.next_level_requirements">
-                  <n-statistic
-                    :label="`目标: ${auth.creditInfo.next_level_requirements.next_level}`"
+                  <n-statistic :label="`目标: ${auth.creditInfo.next_level_requirements.next_level}`"
                     :value="auth.creditInfo.next_level_requirements.remaining_score + ' 分'"
-                    value-style="color: #f0a020;"
-                  />
+                    value-style="color: #f0a020;" />
                   <p style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
                     {{ auth.creditInfo.next_level_requirements.description }}
                   </p>
@@ -127,7 +115,7 @@
         </n-tab-pane>
       </n-tabs>
     </section>
-    
+
     <!-- 编辑资料模态框 -->
     <n-modal v-model:show="showEditModal" preset="card" style="width: 500px;" title="编辑个人资料">
       <n-form :model="editForm" :rules="editRules" ref="editFormRef">
@@ -153,15 +141,15 @@
 import { computed, ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useTaskStore, TASK_STATUS_LABELS, TASK_CATEGORY_LABELS } from '../stores/tasks'
-import { 
-  NTag, 
-  NProgress, 
-  NGrid, 
-  NGridItem, 
-  NCard, 
-  NTabs, 
-  NTabPane, 
-  NStatistic, 
+import {
+  NTag,
+  NProgress,
+  NGrid,
+  NGridItem,
+  NCard,
+  NTabs,
+  NTabPane,
+  NStatistic,
   NEmpty,
   NAvatar,
   NModal,
@@ -259,6 +247,8 @@ function getTrendLabel(trend: string): string {
 
 function logout() {
   auth.logout()
+  // 退出登录后跳转到登录页面
+  router.push('/login')
 }
 
 // 保存个人资料
@@ -273,7 +263,7 @@ async function saveProfile() {
           phone: editForm.value.phone,
           campus: editForm.value.campus
         })
-        
+
         message.success('资料更新成功')
         showEditModal.value = false
       } catch (error) {

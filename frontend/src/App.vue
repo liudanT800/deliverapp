@@ -12,9 +12,12 @@
               <nav>
                 <router-link to="/">任务大厅</router-link>
                 <router-link to="/tasks/create">发布任务</router-link>
-                <router-link to="/management/tasks">任务管理</router-link>
-                <router-link to="/management/users">用户管理</router-link>
-                <router-link to="/management/history">历史记录</router-link>
+                <router-link v-if="auth.user?.role === 'admin'" to="/management/tasks">任务管理</router-link>
+                <router-link v-if="auth.user?.role === 'admin'" to="/management/users">用户管理</router-link>
+                <router-link v-if="auth.user?.role === 'admin'" to="/management/history">历史记录</router-link>
+                <router-link to="/chat-sessions">沟通</router-link>
+                <router-link to="/wallet">钱包</router-link>
+                <router-link to="/appeals">申诉</router-link>
                 <router-link to="/profile">我的</router-link>
               </nav>
             </header>
@@ -40,6 +43,9 @@ import {
   zhCN,
   dateZhCN,
 } from 'naive-ui'
+import { useAuthStore } from './stores/auth'
+
+const auth = useAuthStore()
 </script>
 
 <style scoped>

@@ -93,6 +93,22 @@
           >
             取消任务
           </n-button>
+          <n-button
+            v-if="canChat"
+            type="info"
+            secondary
+            @click="openChat"
+          >
+            联系对方
+          </n-button>
+          <n-button
+            v-if="canEvaluate"
+            type="primary"
+            secondary
+            @click="openEvaluation"
+          >
+            评价对方
+          </n-button>
         </n-space>
       </div>
     </section>
@@ -140,6 +156,34 @@ const canAcceptTask = computed(() => {
 
   // 只有pending状态的任务才能被接取
   return task.value.status === 'pending'
+})
+
+// 判断当前用户是否可以聊天
+const canChat = computed(() => {
+  if (!task.value || !auth.user) return false
+
+  // 必须是任务的发布者或接单者
+  const isParticipant = auth.user.id === task.value.createdBy?.id ||
+                       (task.value.assignedTo && auth.user.id === task.value.assignedTo.id)
+
+  // 任务未被取消
+  const notCancelled = task.value.status !== 'cancelled'
+
+  return isParticipant && notCancelled
+})
+
+// 判断当前用户是否可以评价
+const canEvaluate = computed(() => {
+  if (!task.value || !auth.user) return false
+
+  // 只有已完成的任务才能评价
+  if (task.value.status !== 'completed') return false
+
+  // 必须是任务的发布者或接单者
+  const isParticipant = auth.user.id === task.value.createdBy?.id ||
+                       (task.value.assignedTo && auth.user.id === task.value.assignedTo.id)
+
+  return isParticipant
 })
 
 const timeline = [
@@ -214,6 +258,14 @@ async function cancelTask() {
   } catch (error) {
     message.error('取消任务失败: ' + (error as Error).message)
   }
+}
+
+function openChat() {
+  router.push(`/chat/${taskId}`)
+}
+
+function openEvaluation() {
+  router.push(`/evaluation/${taskId}`)
 }
 
 function goBack() {
